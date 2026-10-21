@@ -27,12 +27,26 @@ Parameters:
       - amplify
   Repository:
     Type: String
+    Default: https://github.com/aws-samples/serverless-pdf-chat
+  BedrockRegion:
+    Default: us-east-1
+    Type: String
   ModelId:
-    Default: "anthropic.claude-3-sonnet-20240229-v1:0"
+    Default: "amazon.nova-pro-v1:0"
     Type: String
   EmbeddingModelId:
     Default: "amazon.titan-embed-text-v2:0"
     Type: String
+  AiMode:
+    Default: local
+    Type: String
+    AllowedValues:
+      - local
+      - auto
+      - bedrock
+    Description: >-
+      local uses the built-in extractive study engine with no Bedrock calls;
+      auto tries Bedrock and falls back locally; bedrock requires Bedrock access.
 
 Conditions:
   DeployToAmplifyHosting: !Equals
@@ -107,6 +121,32 @@ Resources:
               Bool:
                 aws:SecureTransport: false
 
+  StudyPackQueue:
+    Type: AWS::SQS::Queue
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      VisibilityTimeout: 900
+      MessageRetentionPeriod: 3600
+
+  StudyPackQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref StudyPackQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: SecureTransportPolicy
+        Statement:
+          - Sid: AllowSecureTransportOnly
+            Effect: Deny
+            Principal: "*"
+            Action: "SQS:*"
+            Resource: !GetAtt StudyPackQueue.Arn
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
   DocumentTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Delete
@@ -166,6 +206,10 @@ Resources:
       UserPoolId: !Ref CognitoUserPool
       ClientName: !Ref CognitoUserPool
       GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
 
   Api:
     Type: AWS::Serverless::Api
@@ -218,7 +262,7 @@ Resources:
         Variables:
           DOCUMENT_TABLE: !Ref DocumentTable
           MEMORY_TABLE: !Ref MemoryTable
-          QUEUE: !GetAtt EmbeddingQueue.QueueName
+          QUEUE: !GetAtt EmbeddingQueue.QueueUrl
           BUCKET: !Sub "${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
       Events:
         S3Event:
@@ -253,6 +297,45 @@ Resources:
             RestApiId: !Ref Api
             Path: /doc/{documentid}/{conversationid}
             Method: GET
+
+  GetStudyPackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/get_study_pack/
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DocumentTable
+      Environment:
+        Variables:
+          DOCUMENT_TABLE: !Ref DocumentTable
+      Events:
+        Root:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /doc/{documentid}/study-pack
+            Method: GET
+
+  RequestStudyPackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/request_study_pack/
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DocumentTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt StudyPackQueue.QueueName
+      Environment:
+        Variables:
+          DOCUMENT_TABLE: !Ref DocumentTable
+          STUDY_PACK_QUEUE: !Ref StudyPackQueue
+      Events:
+        Root:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /doc/{documentid}/study-pack
+            Method: POST
 
   GetAllDocuments:
     Type: AWS::Serverless::Function
@@ -298,7 +381,7 @@ Resources:
     Properties:
       CodeUri: src/generate_embeddings/
       Timeout: 180
-      MemorySize: 2048
+      MemorySize: 512
       Policies:
         - SQSPollerPolicy:
             QueueName: !GetAtt EmbeddingQueue.QueueName
@@ -310,12 +393,14 @@ Resources:
             - Sid: "BedrockScopedAccess"
               Effect: "Allow"
               Action: "bedrock:InvokeModel"
-              Resource: !Sub "arn:aws:bedrock:*::foundation-model/${EmbeddingModelId}"
+              Resource: !Sub "arn:aws:bedrock:${BedrockRegion}::foundation-model/${EmbeddingModelId}"
       Environment:
         Variables:
           DOCUMENT_TABLE: !Ref DocumentTable
           BUCKET: !Ref DocumentBucket
           EMBEDDING_MODEL_ID: !Ref EmbeddingModelId
+          BEDROCK_REGION: !Ref BedrockRegion
+          AI_MODE: !Ref AiMode
       Events:
         EmbeddingQueueEvent:
           Type: SQS
@@ -323,12 +408,44 @@ Resources:
             Queue: !GetAtt EmbeddingQueue.Arn
             BatchSize: 1
 
+  GenerateStudyPackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/generate_study_pack/
+      Timeout: 300
+      MemorySize: 512
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt StudyPackQueue.QueueName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DocumentTable
+        - S3ReadPolicy:
+            BucketName: !Ref DocumentBucket
+        - Statement:
+            - Sid: "BedrockScopedAccess"
+              Effect: "Allow"
+              Action: "bedrock:InvokeModel"
+              Resource: !Sub "arn:aws:bedrock:${BedrockRegion}::foundation-model/${ModelId}"
+      Environment:
+        Variables:
+          DOCUMENT_TABLE: !Ref DocumentTable
+          BUCKET: !Ref DocumentBucket
+          MODEL_ID: !Ref ModelId
+          BEDROCK_REGION: !Ref BedrockRegion
+          AI_MODE: !Ref AiMode
+      Events:
+        StudyPackQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt StudyPackQueue.Arn
+            BatchSize: 1
+
   GenerateResponseFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/generate_response/
-      Timeout: 30
-      MemorySize: 2048
+      Timeout: 29
+      MemorySize: 512
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref MemoryTable
@@ -339,14 +456,16 @@ Resources:
               Effect: "Allow"
               Action: "bedrock:InvokeModel"
               Resource:
-                - !Sub "arn:aws:bedrock:*::foundation-model/${ModelId}"
-                - !Sub "arn:aws:bedrock:*::foundation-model/${EmbeddingModelId}"
+                - !Sub "arn:aws:bedrock:${BedrockRegion}::foundation-model/${ModelId}"
+                - !Sub "arn:aws:bedrock:${BedrockRegion}::foundation-model/${EmbeddingModelId}"
       Environment:
         Variables:
           MEMORY_TABLE: !Ref MemoryTable
           BUCKET: !Ref DocumentBucket
           MODEL_ID: !Ref ModelId
           EMBEDDING_MODEL_ID: !Ref EmbeddingModelId
+          BEDROCK_REGION: !Ref BedrockRegion
+          AI_MODE: !Ref AiMode
       Events:
         Root:
           Type: Api

@@ -1,0 +1,184 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: LectureLens frontend hosting - private S3 served over HTTPS by a Lambda + API Gateway HTTP API
+
+Parameters:
+  BucketPrefix:
+    Type: String
+    Default: lecturelens
+    MinLength: 3
+    MaxLength: 40
+    AllowedPattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+    Description: Lowercase prefix used for the frontend S3 bucket name.
+
+Resources:
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${BucketPrefix}-${AWS::AccountId}-${AWS::Region}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Project
+          Value: LectureLens
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  FrontendFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: ReadFrontendBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "${FrontendBucket.Arn}/*"
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt FrontendBucket.Arn
+
+  FrontendFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${BucketPrefix}-frontend"
+      Description: Serve the LectureLens single-page app from a private S3 bucket
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt FrontendFunctionRole.Arn
+      MemorySize: 512
+      Timeout: 15
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          BUCKET: !Ref FrontendBucket
+      Code:
+        ZipFile: |
+          import base64
+          import mimetypes
+          import os
+          import urllib.parse
+
+          import boto3
+          from botocore.exceptions import ClientError
+
+          BUCKET = os.environ["BUCKET"]
+          s3 = boto3.client("s3")
+
+
+          def _get(key):
+              try:
+                  return s3.get_object(Bucket=BUCKET, Key=key)
+              except ClientError as exc:
+                  code = exc.response.get("Error", {}).get("Code", "")
+                  if code in ("NoSuchKey", "404", "NotFound"):
+                      return None
+                  raise
+
+
+          def handler(event, context):
+              raw_path = event.get("rawPath") or event.get("path") or "/"
+              key = urllib.parse.unquote(raw_path).lstrip("/")
+              if not key or key.endswith("/"):
+                  key = "index.html"
+
+              response = _get(key)
+              if response is None:
+                  # BrowserRouter routes are handled by the SPA.
+                  key = "index.html"
+                  response = _get(key)
+              if response is None:
+                  return {
+                      "statusCode": 404,
+                      "headers": {"Content-Type": "text/plain; charset=utf-8"},
+                      "body": "Frontend build not found.",
+                  }
+
+              body = response["Body"].read()
+              content_type = (
+                  response.get("ContentType")
+                  or mimetypes.guess_type(key)[0]
+                  or "application/octet-stream"
+              )
+              cache_control = (
+                  "public,max-age=31536000,immutable"
+                  if key.startswith("assets/")
+                  else "no-cache"
+              )
+              return {
+                  "statusCode": 200,
+                  "headers": {
+                      "Content-Type": content_type,
+                      "Cache-Control": cache_control,
+                  },
+                  "body": base64.b64encode(body).decode("ascii"),
+                  "isBase64Encoded": True,
+              }
+
+  FrontendApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "${BucketPrefix}-frontend-api"
+      ProtocolType: HTTP
+      Description: HTTPS entry point for the LectureLens single-page app
+
+  FrontendIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref FrontendApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FrontendFunction.Arn}/invocations"
+      PayloadFormatVersion: "2.0"
+
+  FrontendRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref FrontendApi
+      RouteKey: "$default"
+      Target: !Sub "integrations/${FrontendIntegration}"
+
+  FrontendStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref FrontendApi
+      StageName: "$default"
+      AutoDeploy: true
+
+  FrontendInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FrontendFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${FrontendApi}/*"
+
+Outputs:
+  FrontendBucketName:
+    Description: S3 bucket that receives the built frontend
+    Value: !Ref FrontendBucket
+  FrontendApiId:
+    Description: HTTP API ID that serves the frontend
+    Value: !Ref FrontendApi
+  FrontendUrl:
+    Description: Public HTTPS LectureLens URL
+    Value: !Sub "https://${FrontendApi}.execute-api.${AWS::Region}.amazonaws.com"

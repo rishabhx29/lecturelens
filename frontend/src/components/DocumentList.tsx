@@ -26,8 +26,8 @@ const DocumentList: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between pt-6 pb-4">
-        <h2 className="text-2xl font-bold">My documents</h2>
+      <div className="flex justify-between pt-8 pb-4">
+        <h2 className="text-2xl font-bold">My lectures</h2>
         <button
           onClick={fetchData}
           type="button"
@@ -40,7 +40,7 @@ const DocumentList: React.FC = () => {
           />
         </button>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {documents &&
           documents.length > 0 &&
           documents.map((document: Document) => (
@@ -54,9 +54,12 @@ const DocumentList: React.FC = () => {
           ))}
       </div>
       {listStatus === "idle" && documents.length === 0 && (
-        <div className="flex flex-col items-center mt-4">
-          <p className="font-bold text-lg">There's nothing here yet...</p>
-          <p className="mt-1">Upload your first document to get started!</p>
+        <div className="flex flex-col items-center mt-4 rounded-xl border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center">
+          <p className="font-bold text-lg">No lectures yet...</p>
+          <p className="mt-1 text-sm text-gray-600">
+            Add your first lecture PDF to start chatting and building Study
+            Packs.
+          </p>
         </div>
       )}
       {listStatus === "loading" && documents.length === 0 && (

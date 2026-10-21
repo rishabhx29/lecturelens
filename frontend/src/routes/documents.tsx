@@ -1,4 +1,5 @@
 import React, {useState} from "react";
+import WelcomeHero from "../components/WelcomeHero";
 import DocumentUploader from "../components/DocumentUploader";
 import DocumentList from "../components/DocumentList";
 
@@ -11,7 +12,10 @@ const Documents: React.FC = () => {
 
   return (
     <>
-      <DocumentUploader onDocumentUploaded={reloadDocuments}/>
+      <WelcomeHero />
+      <div className="mt-8">
+        <DocumentUploader onDocumentUploaded={reloadDocuments}/>
+      </div>
       <DocumentList key={documentListKey}/>
     </>
   );

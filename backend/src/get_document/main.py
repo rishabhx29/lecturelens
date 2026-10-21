@@ -24,6 +24,10 @@ def lambda_handler(event, context):
         Key={"userid": user_id, "documentid": document_id}
     )
     document = response["Item"]
+    # The study pack is served by its own endpoint. Exclude it (and any prior
+    # error) from the chat response so the payload stays small.
+    document.pop("studypack", None)
+    document.pop("studypackerror", None)
     document["conversations"] = sorted(
         document["conversations"], key=lambda conv: conv["created"], reverse=True
     )

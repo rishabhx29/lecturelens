@@ -4,10 +4,14 @@ import {
   ArrowLeftOnRectangleIcon,
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
-import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/solid";
+import { BookOpenIcon } from "@heroicons/react/24/solid";
 
 interface NavigationProps {
-  userInfo: any;
+  userInfo: {
+    attributes?: {
+      email?: string;
+    };
+  } | null;
   handleSignOutClick: (
     event: React.MouseEvent<HTMLButtonElement>
   ) => Promise<void>;
@@ -24,8 +28,8 @@ const Navigation: React.FC<NavigationProps> = ({
           to="/"
           className="inline-flex items-center self-center text-2xl font-semibold whitespace-nowrap text-white"
         >
-          <ChatBubbleLeftRightIcon className="w-6 h-6 mr-1.5" />
-          DocChat
+          <BookOpenIcon className="w-6 h-6 mr-1.5" aria-hidden="true" />
+          LectureLens
         </Link>
         <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
           <div className="relative ml-3">

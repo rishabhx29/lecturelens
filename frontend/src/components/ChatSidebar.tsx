@@ -3,8 +3,10 @@ import { Conversation } from "../common/types";
 import { getDateTime } from "../common/utilities";
 import { Params } from "react-router-dom";
 import {
+  BookOpenIcon,
   ChatBubbleLeftRightIcon,
   PlusCircleIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 
 interface ChatSidebarProps {
@@ -13,6 +15,7 @@ interface ChatSidebarProps {
   addConversation: () => Promise<void>;
   switchConversation: (e: React.MouseEvent<HTMLButtonElement>) => void;
   conversationListStatus: "idle" | "loading";
+  onOpenStudyPack: () => void;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -21,11 +24,60 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   addConversation,
   switchConversation,
   conversationListStatus,
+  onOpenStudyPack,
 }) => {
+  const isReady = conversation.document.docstatus === "READY";
+
   return (
-    <div className="col-span-4 h-full">
+    <div className="col-span-12 h-full lg:col-span-4">
       <div className="bg-gray-100 p-5">
         <DocumentDetail document={conversation.document} />
+      </div>
+      <div className="border-b border-gray-200 bg-white px-3 py-4">
+        <button
+          type="button"
+          onClick={onOpenStudyPack}
+          disabled={!isReady}
+          aria-describedby={isReady ? undefined : "study-pack-hint"}
+          className={`group flex w-full items-center rounded-xl px-3.5 py-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 ${
+            isReady
+              ? "bg-gradient-to-r from-violet-950 to-violet-800 text-white shadow-sm hover:from-violet-900 hover:to-violet-700"
+              : "cursor-not-allowed border border-gray-200 bg-gray-50 text-gray-400"
+          }`}
+        >
+          <BookOpenIcon
+            className={`mr-2.5 h-5 w-5 shrink-0 ${
+              isReady ? "text-violet-200" : "text-gray-400"
+            }`}
+            aria-hidden="true"
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold">Study Pack</span>
+            <span
+              className={`block text-[11px] ${
+                isReady ? "text-violet-200" : "text-gray-400"
+              }`}
+            >
+              Summary · Flashcards · Quiz
+            </span>
+          </span>
+          <SparklesIcon
+            className={`ml-auto h-4 w-4 shrink-0 ${
+              isReady
+                ? "text-violet-200 transition group-hover:text-white"
+                : "text-gray-300"
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+        {!isReady && (
+          <p
+            id="study-pack-hint"
+            className="mt-2 px-1 text-xs leading-5 text-gray-500"
+          >
+            Available once this lecture finishes processing.
+          </p>
+        )}
       </div>
       <div className="px-3 pt-3 pb-5">
         {conversationListStatus === "idle" && (

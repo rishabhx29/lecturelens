@@ -19,6 +19,10 @@ def lambda_handler(event, context):
     response = document_table.query(KeyConditionExpression=Key("userid").eq(user_id))
     items = sorted(response["Items"], key=lambda item: item["created"], reverse=True)
     for item in items:
+        # The document list only needs status metadata. The full pack is
+        # fetched from the dedicated study-pack endpoint.
+        item.pop("studypack", None)
+        item.pop("studypackerror", None)
         item["conversations"] = sorted(
             item["conversations"], key=lambda conv: conv["created"], reverse=True
         )

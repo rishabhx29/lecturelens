@@ -18,7 +18,8 @@ Amplify.configure({
     REST: {
       "serverless-pdf-chat": {
         endpoint: import.meta.env.VITE_API_ENDPOINT,
-        region: import.meta.env.VITE_API_REGION,
+        region:
+          import.meta.env.VITE_API_REGION || import.meta.env.VITE_REGION,
       },
     },
   }}, {
@@ -56,4 +57,6 @@ function App() {
   return <RouterProvider router={router} />;
 }
 
-export default withAuthenticator(App, { hideSignUp: true });
+const AuthenticatedApp = withAuthenticator(App, { hideSignUp: true });
+
+export default AuthenticatedApp;

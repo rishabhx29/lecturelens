@@ -13,6 +13,13 @@ memory_table = ddb.Table(MEMORY_TABLE)
 s3 = boto3.client("s3")
 logger = Logger()
 
+CORS_HEADERS = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "*",
+}
+
 
 @logger.inject_lambda_context(log_event=True)
 def lambda_handler(event, context):
@@ -22,7 +29,13 @@ def lambda_handler(event, context):
     response = document_table.get_item(
         Key={"userid": user_id, "documentid": document_id}
     )
-    document = response["Item"]
+    document = response.get("Item")
+    if not document:
+        return {
+            "statusCode": 404,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": "Document not found."}),
+        }
     logger.info({"document": document})
     logger.info("Deleting DDB items")
     with memory_table.batch_writer() as batch:
@@ -35,7 +48,12 @@ def lambda_handler(event, context):
 
     logger.info("Deleting S3 objects")
     filename = document["filename"]
-    objects = [{"Key": f"{user_id}/{filename}/{key}"} for key in [filename, "index.faiss", "index.pkl"]]
+    # Keep the legacy FAISS keys for documents indexed by older deployments,
+    # and remove the JSON index used by the pure-Python pipeline.
+    objects = [
+        {"Key": f"{user_id}/{filename}/{key}"}
+        for key in [filename, "index.json", "index.faiss", "index.pkl"]
+    ]
     response = s3.delete_objects(
         Bucket=BUCKET,
         Delete={
@@ -47,12 +65,7 @@ def lambda_handler(event, context):
 
     return {
         "statusCode": 200,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "*",
-        },
+        "headers": CORS_HEADERS,
         "body": json.dumps(
             {},
             default=str,

@@ -4,6 +4,7 @@ import { get, post } from "aws-amplify/api";
 import { Conversation } from "../common/types";
 import ChatSidebar from "../components/ChatSidebar";
 import ChatMessages from "../components/ChatMessages";
+import StudyPackModal from "../components/StudyPackModal";
 import LoadingGrid from "../../public/loading-grid.svg";
 
 const Document: React.FC = () => {
@@ -17,21 +18,28 @@ const Document: React.FC = () => {
     "idle" | "loading"
   >("idle");
   const [prompt, setPrompt] = useState("");
+  const [studyPackOpen, setStudyPackOpen] = useState(false);
 
   const fetchData = async (conversationid = params.conversationid) => {
     setLoading("loading");
-    const response = await get({
-      apiName: "serverless-pdf-chat",
-      path: `doc/${params.documentid}/${conversationid}`
-    }).response
-    const conversation = await response.body.json() as unknown as Conversation
-    setConversation(conversation);
-    setLoading("idle");
-    console.log("Foo")
+    try {
+      const response = await get({
+        apiName: "serverless-pdf-chat",
+        path: `doc/${params.documentid}/${conversationid}`,
+      }).response;
+      const conversation = (await response.body.json()) as unknown as Conversation;
+      setConversation(conversation);
+    } catch (error) {
+      console.error("Failed to load conversation", error);
+    } finally {
+      setLoading("idle");
+    }
   };
 
   useEffect(() => {
     fetchData();
+    // Intentionally runs once on mount for the route's initial conversation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePromptChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,38 +71,45 @@ const Document: React.FC = () => {
   };
 
   const submitMessage = async () => {
+    if (
+      !conversation ||
+      conversation.document.docstatus !== "READY" ||
+      !prompt.trim()
+    ) {
+      return;
+    }
+
     setMessageStatus("loading");
+    const previewMessage = {
+      type: "text",
+      data: {
+        content: prompt,
+        additional_kwargs: {},
+        example: false,
+      },
+    };
 
-    if (conversation !== null) {
-      const previewMessage = {
-        type: "text",
-        data: {
-          content: prompt,
-          additional_kwargs: {},
-          example: false,
-        },
-      };
+    setConversation({
+      ...conversation,
+      messages: [...conversation.messages, previewMessage],
+    });
 
-      const updatedConversation = {
-        ...conversation,
-        messages: [...conversation.messages, previewMessage],
-      };
-
-      setConversation(updatedConversation);
-
-
+    try {
       await post({
         apiName: "serverless-pdf-chat",
-        path: `${conversation?.document.documentid}/${conversation?.conversationid}`,
+        path: `${conversation.document.documentid}/${conversation.conversationid}`,
         options: {
           body: {
-            fileName: conversation?.document.filename,
+            fileName: conversation.document.filename,
             prompt: prompt,
-          }
-        }
+          },
+        },
       }).response;
       setPrompt("");
-      fetchData(conversation?.conversationid);
+    } catch (error) {
+      console.error("Failed to send message", error);
+    } finally {
+      await fetchData(conversation.conversationid);
       setMessageStatus("idle");
     }
   };
@@ -114,6 +129,7 @@ const Document: React.FC = () => {
             addConversation={addConversation}
             switchConversation={switchConversation}
             conversationListStatus={conversationListStatus}
+            onOpenStudyPack={() => setStudyPackOpen(true)}
           />
           <ChatMessages
             prompt={prompt}
@@ -125,6 +141,11 @@ const Document: React.FC = () => {
           />
         </div>
       )}
+      <StudyPackModal
+        isOpen={studyPackOpen}
+        onClose={() => setStudyPackOpen(false)}
+        document={conversation?.document ?? null}
+      />
     </div>
   );
 };

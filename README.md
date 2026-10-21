@@ -1,245 +1,162 @@
-# Serverless document chat application
+# LectureLens
 
-This sample application allows you to ask natural language questions of any PDF document you upload. It combines the text generation and analysis capabilities of an LLM with a vector search of the document content. The solution uses serverless services such as [Amazon Bedrock](https://aws.amazon.com/bedrock/) to access foundational models, [AWS Lambda](https://aws.amazon.com/lambda/) to run [LangChain](https://github.com/langchain-ai/langchain), and [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) for conversational memory.
+LectureLens is a serverless study companion for lecture PDFs. Upload a lecture, chat with the material, and generate a **Study Pack** containing a summary, key concepts, flashcards, and a multiple-choice quiz.
 
-See the [accompanying blog post on the AWS Serverless Blog](https://aws.amazon.com/blogs/compute/building-a-serverless-document-chat-with-aws-lambda-and-amazon-bedrock/) for a detailed description and follow the deployment instructions below to get started.
+Built on AWS with Cognito, API Gateway, Lambda, DynamoDB, S3, and SQS. The frontend is served over HTTPS from a private S3 bucket through an API Gateway HTTP API. Amazon Bedrock is optional; the default zero-cost mode uses a deterministic local study engine.
 
-<p float="left">
-  <img src="preview-1.png" width="49%" />
-  <img src="preview-2.png" width="49%" />
-</p>
+| Study Pack | Key concepts |
+| --- | --- |
+| ![Study Pack summary](docs/study-pack-summary.png) | ![Study Pack key concepts](docs/study-pack-concepts.png) |
 
-> **Warning**
-> This application is not ready for production use. It was written for demonstration and educational purposes. Review the [Security](#security) section of this README and consult with your security team before deploying this stack. No warranty is implied in this example.
+## What it does
 
-> **Note**
-> This architecture creates resources that have costs associated with them. Please see the [AWS Pricing](https://aws.amazon.com/pricing/) page for details and make sure to understand the costs before deploying this stack.
+- **Chat with a PDF** — ask questions and get answers grounded in the document, with page references.
+- **Study Pack** — one click produces:
+  - a concise summary
+  - 5–8 key concepts
+  - 8–12 flashcards
+  - a 5-question practice quiz with explanations
+- **Asynchronous generation** — the API returns immediately, the browser polls a status endpoint, and a worker Lambda builds the Study Pack. This avoids the API Gateway 29-second timeout.
+- **Private by default** — documents live in a private S3 bucket; the frontend is served from a private bucket by a small Lambda behind API Gateway HTTPS, with no public object access.
+- **Admin-created users** — Cognito is configured for a small private demo, with no public sign-up.
 
-## Key features
+## Architecture
 
-- [Amazon Bedrock](https://aws.amazon.com/de/bedrock/) for serverless embedding and inference
-- [LangChain](https://github.com/hwchase17/langchain) to orchestrate a Q&A LLM chain
-- [FAISS](https://github.com/facebookresearch/faiss) vector store
-- [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) for serverless conversational memory
-- [AWS Lambda](https://aws.amazon.com/lambda/) for serverless compute
-- Frontend built in [React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [TailwindCSS](https://tailwindcss.com/), and [Vite](https://vitejs.dev/).
-- Run locally or deploy to [AWS Amplify Hosting](https://aws.amazon.com/amplify/hosting/)
-- [Amazon Cognito](https://aws.amazon.com/cognito/) for authentication
+```
+Browser (React + Vite)
+  │
+  ├── Cognito sign-in
+  ▼
+API Gateway (REST, Cognito authorizer)
+  ├── document upload / list / chat / delete
+  ├── POST /doc/{id}/study-pack  ──► SQS StudyPackQueue
+  └── GET  /doc/{id}/study-pack  ──► DynamoDB
+                                         ▲
+                                         │
+                              GenerateStudyPack Lambda
+                              ├── reads PDF from S3
+                              ├── Bedrock Converse or local study engine
+                              └── stores pack + status
 
-## How the application works
-
-![Serverless PDF Chat architecture](architecture.png "Serverless PDF Chat architecture")
-
-1. A user uploads a PDF document into an [Amazon Simple Storage Service](https://aws.amazon.com/s3/) (S3) bucket through a static web application frontend.
-1. This upload triggers a metadata extraction and document embedding process. The process converts the text in the document into vectors. The vectors are loaded into a vector index and stored in S3 for later use.
-1. When a user chats with a PDF document and sends a prompt to the backend, a Lambda function retrieves the index from S3 and searches for information related to the prompt.
-1. A LLM then uses the results of this vector search, previous messages in the conversation, and its general-purpose capabilities to formulate a response to the user.
-
-## Deployment instructions
-
-### Prerequisites
-
-- [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
-- [Python](https://www.python.org/) 3.11 or greater
-
-### Cloning the repository
-
-Clone this repository:
-
-```bash
-git clone https://github.com/aws-samples/serverless-pdf-chat.git
+Frontend hosting: private S3 bucket ◄── Lambda + API Gateway HTTP API (HTTPS)
 ```
 
-### Amazon Bedrock setup
+CloudFront is optional. New Free-plan accounts may need account verification before
+creating a distribution, so the default deployment uses the API Gateway HTTPS host.
+`infra/frontend-cloudfront.yaml` is kept for accounts that have CloudFront enabled.
 
-This application can be used with a variety of Amazon Bedrock models. See [Supported models in Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-service.html#models-supported) for a complete list.
+The PDF indexing pipeline extracts text with `pypdf`, creates deterministic local embeddings by default (or Titan embeddings in Bedrock mode), and stores a JSON index in S3. Chat retrieval uses cosine similarity over that index, then answers from the retrieved passages or calls the Bedrock **Converse** API when enabled. The Lambda dependencies are pure Python, so `sam build` works on Windows without Docker.
 
-By default, this application uses **Titan Embeddings G1 - Text** to generate embeddings and **Anthropic Claude v3 Sonnet** for responses.
+## Quick start
 
-> **Important -**
-> Before you can use these models with this application, **you must request access in the Amazon Bedrock console**. See the [Model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html) section of the Bedrock User Guide for detailed instructions.
-> By default, this application is configured to use Amazon Bedrock in the `us-east-1` Region, make sure you request model access in that Region (this does not have to be the same Region that you deploy this stack to).
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full walkthrough. The short version:
 
-To select your Bedrock model, specify the `ModelId` parameter during the AWS SAM deployment, such as `anthropic.claude-3-sonnet-20240229-v1:0`. See [Amazon Bedrock model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html) for a complete list.
+```powershell
+# 1. Configure AWS credentials and confirm the Free plan is active
+aws sts get-caller-identity
+.\scripts\check-credits.ps1
 
-The `ModelId` parameter is used in the GenerateResponseFunction Lambda function of your AWS SAM template to instantiate [LangChain BedrockChat](https://js.langchain.com/v0.1/docs/integrations/chat/bedrock/) and [ConversationalRetrievalChain](https://api.python.langchain.com/en/latest/chains/langchain.chains.conversational_retrieval.base.ConversationalRetrievalChain.html) objects, providing efficient retrieval of relevant context from large PDF datasets to enable the Bedrock model-generated response.
+# 2. Build and deploy the backend (local AI mode = no Bedrock calls)
+.\scripts\deploy-backend.ps1 -AiMode local
 
-```python
-def bedrock_chain(faiss_index, memory, human_input, bedrock_runtime):
+# 3. Create a login user
+.\scripts\create-demo-user.ps1 -Email you@example.com
 
-    chat = BedrockChat(
-        model_id=MODEL_ID,
-        model_kwargs={'temperature': 0.0}
-    )
-
-    chain = ConversationalRetrievalChain.from_llm(
-        llm=chat,
-        chain_type="stuff",
-        retriever=faiss_index.as_retriever(),
-        memory=memory,
-        return_source_documents=True,
-    )
-
-    response = chain.invoke({"question": human_input})
-
-    return response
+# 4. Build and deploy the frontend to private S3 + HTTPS API host
+.\scripts\deploy-frontend.ps1
 ```
 
-### Deploy the frontend with AWS Amplify Hosting
+The frontend script prints the public HTTPS URL. Sign in with the demo user and upload [`examples/cell-biology-lecture.pdf`](examples/cell-biology-lecture.pdf) to try chat and the Study Pack.
 
-[AWS Amplify Hosting](https://aws.amazon.com/amplify/hosting/) enables a fully-managed deployment of the application's React frontend in an AWS-managed account using Amazon S3 and [Amazon CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html). You can optionally run the React frontend locally by skipping to [Deploy the application with AWS SAM](#Deploy-the-application-with-AWS-SAM).
+## Local frontend development
 
-To set up Amplify Hosting:
+After the backend is deployed, create `frontend/.env.development` using the stack outputs:
 
-1. Fork this GitHub repository and take note of your repository URL, for example `https://github.com/user/serverless-pdf-chat/`.
-1. Create a GitHub fine-grained access token for the new repository by following [this guide](https://docs.aws.amazon.com/amplify/latest/userguide/setting-up-GitHub-access.html). For the **Repository permissions**, select **Read and write** for **Content** and **Webhooks**.
-1. Create a new secret called `serverless-pdf-chat-github-token` in AWS Secrets Manager and input your fine-grained access token as plaintext. Select the **Plaintext** tab and confirm your secret looks like this:
-
-   ```json
-   github_pat_T2wyo------------------------------------------------------------------------rs0Pp
-   ```
-
-### Deploy the application with AWS SAM
-
-1. Change to the `backend` directory and [build](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-cli-command-reference-sam-build.html) the application:
-
-   ```bash
-   cd backend
-   sam build
-   ```
-
-1. [Deploy](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-cli-command-reference-sam-deploy.html) the application into your AWS account:
-
-   ```bash
-   sam deploy --guided
-   ```
-
-1. For **Stack Name**, choose `serverless-pdf-chat`.
-
-1. For **Frontend**, specify the environment ("local", "amplify") for the frontend of the application.
-
-1. If you selected "amplify", specify the URL of the forked Git repository containing the application code.
-
-1. Specify the Amazon Bedrock model ID. For example, `anthropic.claude-3-sonnet-20240229-v1:0`.
-
-1. For the remaining options, keep the defaults by pressing the enter key.
-
-AWS SAM will now provision the AWS resources defined in the `backend/template.yaml` template. Once the deployment is completed successfully, you will see a set of output values similar to the following:
-
-```bash
-CloudFormation outputs from deployed stack
--------------------------------------------------------------------------------
-Outputs
--------------------------------------------------------------------------------
-Key                 CognitoUserPool
-Description         -
-Value               us-east-1_gxKtRocFs
-
-Key                 CognitoUserPoolClient
-Description         -
-Value               874ghcej99f8iuo0lgdpbrmi76k
-
-Key                 ApiGatewayBaseUrl
-Description         -
-Value               https://abcd1234.execute-api.us-east-1.amazonaws.com/dev/
--------------------------------------------------------------------------------
-```
-
-If you selected to deploy the React frontend using Amplify Hosting, navigate to the Amplify console to check the build status. If the build does not start automatically, trigger it through the Amplify console.
-
-If you selected to run the React frontend locally and connect to the deployed resources in AWS, you will use the CloudFormation stack outputs in the following section.
-
-### Optional: Run the React frontend locally
-
-Create a file named `.env.development` in the `frontend` directory. [Vite will use this file](https://vitejs.dev/guide/env-and-mode.html) to set up environment variables when we run the application locally.
-
-Copy the following file content and replace the values with the outputs provided by AWS SAM:
-
-```plaintext
+```text
 VITE_REGION=us-east-1
-VITE_API_ENDPOINT=https://abcd1234.execute-api.us-east-1.amazonaws.com/dev/
-VITE_USER_POOL_ID=us-east-1_gxKtRocFs
-VITE_USER_POOL_CLIENT_ID=874ghcej99f8iuo0lgdpbrmi76k
+VITE_API_REGION=us-east-1
+VITE_API_ENDPOINT=https://<api-id>.execute-api.us-east-1.amazonaws.com/dev/
+VITE_USER_POOL_ID=us-east-1_xxxxxxxxx
+VITE_USER_POOL_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-Next, install the frontend's dependencies by running the following command in the `frontend` directory:
+Then:
 
-```bash
+```powershell
+cd frontend
 npm ci
-```
-
-Finally, to start the application locally, run the following command in the `frontend` directory:
-
-```bash
 npm run dev
 ```
 
-Vite will now start the application under `http://localhost:5173`.
+## Project structure
 
-### Create a user in the Amazon Cognito user pool
-
-The application uses Amazon Cognito to authenticate users through a login screen. In this step, you will create a user to access the application.
-
-Perform the following steps to create a user in the Cognito user pool:
-
-1. Navigate to the **Amazon Cognito console**.
-1. Find the user pool with an ID matching the output provided by AWS SAM above.
-1. Under Users, choose **Create user**.
-1. Enter an email address and a password that adheres to the password requirements.
-1. Choose **Create user**.
-
-Navigate back to your Amplify website URL or local host address to log in with the new user's credentials.
-
-## Cleanup
-
-1. Delete any secrets in AWS Secrets Manager created as part of this walkthrough.
-1. [Empty the Amazon S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/empty-bucket.html) created as part of the AWS SAM template.
-1. Run the following command in the `backend` directory of the project to delete all associated resources resources:
-
-   ```bash
-   sam delete
-   ```
-## Troubleshooting
-
-If you are experiencing issues when running the [`sam build`](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-cli-command-reference-sam-build.html) command, try setting the `--use-container` flag (requires Docker):
-
-```bash
-sam build --use-container
+```
+backend/
+  template.yaml                 SAM stack (API, auth, storage, queues, Lambdas)
+  src/
+    generate_embeddings/        PDF -> text chunks -> local embeddings (or Titan) -> index.json
+    generate_response/          Retrieval + local answer or Bedrock Converse chat
+    generate_study_pack/        Async Study Pack worker
+    request_study_pack/         Starts a Study Pack job
+    get_study_pack/             Polls Study Pack status/result
+    ...                         upload, list, delete, conversation routes
+  tests/                        Pure-Python unit tests
+frontend/
+  src/components/StudyPackModal.tsx   Summary / concepts / flashcards / quiz UI
+  src/common/studyPackApi.ts          Typed Study Pack API client
+  src/routes/                         Documents, chat, layout
+infra/frontend.yaml             Private S3 + Lambda + HTTP API hosting stack
+infra/frontend-cloudfront.yaml  Optional CloudFront (OAC) hosting template
+examples/cell-biology-lecture.pdf  Sample 4-page lecture for the demo
+scripts/                        PowerShell deployment and verification helpers
+docs/                           README screenshots
+DEPLOYMENT.md                   Step-by-step AWS deployment guide
 ```
 
-If you are still experiencing issues despite using `--use-container`, try switching the AWS Lambda functions from `arm64` to `x86_64` in the `backend/template.yaml` (as well as switching to the `x_86_64` version of Powertools):
+## Configuration
 
-```yaml
-Globals:
-  Function:
-    Runtime: python3.11
-    Handler: main.lambda_handler
-    Architectures:
-      - x86_64
-    Tracing: Active
-    Environment:
-      Variables:
-        LOG_LEVEL: INFO
-    Layers:
-      - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:51
+| Setting | Default | Notes |
+|---|---|---|
+| Stack region | `us-east-1` | Override with `-Region` |
+| AI mode | `local` | `local` (no Bedrock), `auto` (try Bedrock, then fall back), `bedrock` (require Bedrock) |
+| Chat / Study Pack model | `amazon.nova-pro-v1:0` | Bedrock mode only; must support Converse |
+| Embedding model | `amazon.titan-embed-text-v2:0` | Bedrock mode only; local mode uses deterministic local hashing |
+| Bedrock region | `us-east-1` | Used only in `auto` or `bedrock` mode |
+| Frontend hosting | S3 + Lambda + HTTP API | Created by `infra/frontend.yaml`; CloudFront template is optional |
+
+The SAM template exposes `AiMode`, `ModelId`, `EmbeddingModelId`, and `BedrockRegion` parameters. `AiMode` defaults to `local` because the Free plan does not include Bedrock:
+
+```powershell
+.\scripts\deploy-backend.ps1 -AiMode local
+.\scripts\deploy-backend.ps1 -AiMode auto    # tries Bedrock, falls back locally
+.\scripts\deploy-backend.ps1 -AiMode bedrock # requires model access
 ```
 
-## Security
+## Tests
 
-This application was written for demonstration and educational purposes and not for production use. The [Security Pillar of the AWS Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html) can support you in further adopting the sample into a production deployment in addition to your own established processes. Take note of the following:
+```powershell
+# Run every local check: 84 backend tests, SAM validate/build,
+# cfn-lint, and the frontend build/lint.
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-local.ps1
 
-- The application uses encryption in transit and at rest with AWS-managed keys where applicable. Optionally, use [AWS KMS](https://aws.amazon.com/kms/) with [DynamoDB](https://docs.aws.amazon.com/kms/latest/developerguide/services-dynamodb.html), [SQS](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-server-side-encryption.html), and [S3](https://docs.aws.amazon.com/kms/latest/developerguide/services-s3.html) for more control over encryption keys.
+# Pure-Python core tests only (no AWS credentials required)
+.\.venv\Scripts\python.exe -m unittest discover -s backend\tests -p "test_*.py" -v
 
-- This application uses [Powertools for AWS Lambda (Python)](https://github.com/aws-powertools/powertools-lambda-python) to log to inputs and ouputs to CloudWatch Logs. Per default, this can include sensitive data contained in user input. Adjust the log level and remove log statements to fit your security requirements.
+# Frontend type check, production build, and lint
+cd frontend
+npm ci
+npm run build
+npm run lint
+```
 
-- [API Gateway access logging](https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-logging.html#set-up-access-logging-using-console) and [usage plans](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-api-usage-plans.html) are not activiated in this code sample. Similarly, [S3 access logging](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket-loggingconfig.html) is currently not enabled.
+## Cost notes
 
-- In order to simplify the setup of the demo, this solution uses AWS managed policies associated to IAM roles that contain wildcards on resources. Please consider to further scope down the policies as you see fit according to your needs. Please note that there is a resource wildcard on the AWS managed `AWSLambdaSQSQueueExecutionRole`. This is a known behaviour, see [this GitHub issue](https://github.com/aws/serverless-application-model/issues/2118) for details.
+LectureLens is designed to run entirely on the **AWS Free plan**: no paid upgrade, no out-of-pocket charges. The account includes **$100 in credits** (plus activity credits), and the plan closes when the credits or term end instead of billing you.
 
-- If your security controls require inspecting network traffic, consider [adjusting the AWS SAM template](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html) to attach the Lambda functions to a VPC via its [`VpcConfig`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-lambda-function-vpcconfig.html).
+**Amazon Bedrock is not included in the Free plan.** The default `AiMode=local` makes no Bedrock calls, so the demo has no model-token cost. Lambda, DynamoDB, SQS, Cognito, and CloudWatch have Always Free allowances; S3 and API Gateway draw from the credit balance. The frontend uses a private S3 bucket and a small Lambda behind an HTTP API; CloudFront is not required. Keep using small PDFs and avoid repeated bulk uploads.
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+Run `.\scripts\check-credits.ps1` to see the remaining balance. For AWS India accounts, complete payment-method verification (UPI AutoPay or card) in Billing → Payment preferences to activate services; this is identity verification, not a paid upgrade. See [DEPLOYMENT.md](DEPLOYMENT.md) for details and cleanup.
 
-## License
+## Attribution
 
-This library is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file.
+The base application is [`aws-samples/serverless-pdf-chat`](https://github.com/aws-samples/serverless-pdf-chat), licensed under MIT-0. LectureLens adds the Study Pack pipeline and UI, LectureLens branding, a pure-Python local AI path, and an AWS-hosted frontend (private S3 + Lambda + HTTP API, with an optional CloudFront template).

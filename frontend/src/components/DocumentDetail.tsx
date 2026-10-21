@@ -9,6 +9,7 @@ import {
   CloudIcon,
   CogIcon,
   TrashIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { del } from "aws-amplify/api";
 import {useNavigate} from "react-router-dom";
@@ -80,9 +81,37 @@ const DocumentDetail: React.FC<DocumentDetailProps> = ({document, onDocumentDele
             <div className="flex flex-row">
               <button
                 onClick={deleteDocument}
+                aria-label={`Delete ${document.filename}`}
                 className="text-gray-700 hover:bg-gray-700 hover:text-white focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg p-2"
               >
-                <TrashIcon className={`"w-4 h-4 mr-1 ${deleteStatus === "deleting" ? "animate-spin" : ""}`}/>
+                <TrashIcon
+                  className={`w-4 h-4 mr-1 ${
+                    deleteStatus === "deleting" ? "animate-spin" : ""
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
+        {document.docstatus === "FAILED" && (
+          <div className="flex flex-row pt-4">
+            <div className="flex flex-row justify-center flex-grow pt-2">
+              <span className="inline-flex items-center self-start bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
+                <XCircleIcon className="w-4 h-4 mr-1" />
+                Processing failed
+              </span>
+            </div>
+            <div className="flex flex-row">
+              <button
+                onClick={deleteDocument}
+                aria-label={`Delete ${document.filename}`}
+                className="text-gray-700 hover:bg-gray-700 hover:text-white focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg p-2"
+              >
+                <TrashIcon
+                  className={`w-4 h-4 mr-1 ${
+                    deleteStatus === "deleting" ? "animate-spin" : ""
+                  }`}
+                />
               </button>
             </div>
           </div>

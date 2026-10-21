@@ -5,7 +5,9 @@ import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
 
 const Layout: React.FC = () => {
-  const [userInfo, setUserInfo] = useState<any>(null);
+  const [userInfo, setUserInfo] = useState<{
+    attributes: Awaited<ReturnType<typeof fetchUserAttributes>>;
+  } | null>(null);
 
   useEffect(() => {
     (async () => {

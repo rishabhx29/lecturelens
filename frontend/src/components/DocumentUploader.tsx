@@ -64,8 +64,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({onDocumentUploaded})
   };
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold pb-4">Add document</h2>
+    <div id="upload-lecture" className="scroll-mt-6">
+      <h2 className="text-2xl font-bold">Add a lecture PDF</h2>
+      <p className="pb-4 pt-1 text-sm text-gray-500">
+        Once it finishes processing you can chat with it and generate a Study
+        Pack.
+      </p>
       {inputStatus === "idle" && (
         <div className="flex items-center justify-center w-full">
           <label
@@ -76,8 +80,8 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({onDocumentUploaded})
               <CloudArrowUpIcon className="w-12 h-12 mb-3 text-gray-400" />
 
               <p className="mb-2 text-sm text-gray-500">
-                <span className="font-semibold">Click to upload</span> your
-                document
+                <span className="font-semibold">Click to upload</span> a lecture
+                PDF
               </p>
               <p className="text-xs text-gray-500">Only .pdf accepted</p>
             </div>
@@ -133,7 +137,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({onDocumentUploaded})
                     className="inline-flex items-center text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg px-3 py-2 text-sm mr-2 mb-2 "
                   >
                     <ArrowLeftCircleIcon className="w-5 h-5 mr-1.5" />
-                    Upload another document
+                    Upload another lecture
                   </button>
                 )}
                 {buttonStatus === "ready" && (
@@ -143,7 +147,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({onDocumentUploaded})
                     className="inline-flex items-center bg-violet-900 text-white border border-gray-300 focus:outline-none hover:bg-violet-700 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg px-3 py-2 text-sm mr-2 mb-2 "
                   >
                     <CloudArrowUpIcon className="w-5 h-5 mr-1.5" />
-                    Upload document
+                    Upload lecture
                   </button>
                 )}
                 {buttonStatus === "uploading" && (

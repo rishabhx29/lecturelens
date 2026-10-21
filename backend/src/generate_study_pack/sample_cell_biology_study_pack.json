@@ -1,0 +1,133 @@
+{
+  "title": "Cell Biology: Cells, Membranes, and Energy",
+  "summary": "This lecture introduces cell theory and the two major cell types, then explains how the selectively permeable plasma membrane controls transport. It surveys the main organelles and their roles, and traces how cells produce and use energy through ATP, cellular respiration, fermentation, and photosynthesis. It closes with cell division, comparing mitosis with meiosis and listing key facts to remember.",
+  "keyConcepts": [
+    {
+      "term": "Cell theory",
+      "definition": "All living organisms are made of one or more cells, and all cells arise from existing cells; the cell is the basic unit of life."
+    },
+    {
+      "term": "Prokaryotic vs. eukaryotic cells",
+      "definition": "Prokaryotic cells (bacteria) lack a membrane-bound nucleus and keep DNA in the nucleoid. Eukaryotic cells have a nucleus and membrane-bound organelles."
+    },
+    {
+      "term": "Fluid mosaic model",
+      "definition": "The plasma membrane is a flexible mosaic of a phospholipid bilayer, proteins, cholesterol, and carbohydrates."
+    },
+    {
+      "term": "Passive vs. active transport",
+      "definition": "Passive transport moves substances down their concentration gradient without ATP; active transport moves them against the gradient using ATP."
+    },
+    {
+      "term": "ATP",
+      "definition": "Adenosine triphosphate, the universal energy currency of the cell. Breaking the terminal phosphate bond releases energy for cellular work."
+    },
+    {
+      "term": "Cellular respiration",
+      "definition": "Glycolysis, the Krebs cycle, and the electron transport chain convert glucose and oxygen into ATP, carbon dioxide, and water."
+    },
+    {
+      "term": "Endosymbiotic theory",
+      "definition": "Mitochondria and chloroplasts may have evolved from free-living bacteria engulfed by an ancestral eukaryotic cell; both have double membranes and their own DNA."
+    }
+  ],
+  "flashcards": [
+    {
+      "front": "What is the function of the plasma membrane?",
+      "back": "It is a selectively permeable phospholipid bilayer that controls what enters and leaves the cell."
+    },
+    {
+      "front": "What does the sodium-potassium pump do?",
+      "back": "For each ATP used, it moves three Na+ ions out of the cell and two K+ ions in (active transport)."
+    },
+    {
+      "front": "Which organelle produces most of the cell's ATP?",
+      "back": "Mitochondria, through aerobic respiration in the cristae of the inner membrane."
+    },
+    {
+      "front": "What happens during the Krebs cycle?",
+      "back": "It occurs in the mitochondrial matrix, finishes oxidizing pyruvate, and produces NADH, FADH2, and a little ATP."
+    },
+    {
+      "front": "Where does translation take place?",
+      "back": "At ribosomes, which translate mRNA into proteins; they can be free or attached to the rough endoplasmic reticulum."
+    },
+    {
+      "front": "What is the endosymbiotic theory?",
+      "back": "Mitochondria and chloroplasts may have evolved from free-living bacteria; both have double membranes and their own DNA."
+    },
+    {
+      "front": "How does mitosis differ from meiosis?",
+      "back": "Mitosis makes two identical daughter cells for growth and repair; meiosis makes gametes with half the chromosome number and increases genetic variation."
+    },
+    {
+      "front": "Why does fermentation happen?",
+      "back": "When oxygen is unavailable, it regenerates NAD+ so glycolysis can continue, producing much less ATP than aerobic respiration."
+    },
+    {
+      "front": "Where do the light-dependent reactions and Calvin cycle occur?",
+      "back": "Light-dependent reactions occur in the thylakoid membranes; the Calvin cycle occurs in the stroma of the chloroplast."
+    },
+    {
+      "front": "What is the role of the Golgi apparatus?",
+      "back": "It modifies, sorts, and packages proteins and lipids for transport, like the cell's post office."
+    }
+  ],
+  "quiz": [
+    {
+      "question": "Which statement best describes prokaryotic cells?",
+      "options": [
+        "They have a membrane-bound nucleus.",
+        "They lack a membrane-bound nucleus.",
+        "They have no genetic material.",
+        "They contain chloroplasts."
+      ],
+      "answerIndex": 1,
+      "explanation": "Prokaryotes keep their DNA in the nucleoid region and do not have a membrane-bound nucleus (page 1)."
+    },
+    {
+      "question": "What is the main difference between passive and active transport?",
+      "options": [
+        "Passive transport requires ATP; active transport does not.",
+        "Active transport requires ATP; passive transport does not.",
+        "Both require ATP.",
+        "Neither uses membrane proteins."
+      ],
+      "answerIndex": 1,
+      "explanation": "Active transport moves substances against their concentration gradient and needs energy, while passive transport does not (page 2)."
+    },
+    {
+      "question": "Where does the electron transport chain occur?",
+      "options": [
+        "In the cytoplasm",
+        "In the mitochondrial matrix",
+        "In the inner mitochondrial membrane",
+        "In the nucleus"
+      ],
+      "answerIndex": 2,
+      "explanation": "The electron transport chain sits in the inner mitochondrial membrane, where the cristae increase surface area (page 3)."
+    },
+    {
+      "question": "Which process produces the most ATP per glucose molecule?",
+      "options": [
+        "Lactic acid fermentation",
+        "Alcoholic fermentation",
+        "Glycolysis alone",
+        "Aerobic respiration"
+      ],
+      "answerIndex": 3,
+      "explanation": "Aerobic respiration combines glycolysis, the Krebs cycle, and the electron transport chain, producing far more ATP than fermentation (page 3)."
+    },
+    {
+      "question": "What produces genetic variation during meiosis?",
+      "options": [
+        "Crossing over and independent assortment",
+        "Binary fission",
+        "Cytokinesis alone",
+        "DNA replication"
+      ],
+      "answerIndex": 0,
+      "explanation": "Meiosis creates variation through crossing over and independent assortment before producing gametes (page 4)."
+    }
+  ]
+}

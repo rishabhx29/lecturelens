@@ -1,0 +1,41 @@
+{
+  "answers": [
+    {
+      "keywords": ["plasma membrane", "phospholipid", "fluid mosaic"],
+      "answer": "The plasma membrane is a selectively permeable phospholipid bilayer. Each phospholipid has a hydrophilic head and two hydrophobic tails, so the tails face inward and the heads face outward. The fluid mosaic model describes it as a flexible mix of phospholipids, proteins, cholesterol, and carbohydrates (page 2)."
+    },
+    {
+      "keywords": ["sodium", "potassium", "pump", "active transport", "passive transport", "diffusion", "osmosis"],
+      "answer": "Passive transport moves substances from higher to lower concentration without ATP (diffusion and osmosis). Active transport moves substances against the gradient and needs energy. The sodium-potassium pump is the classic example: it moves three Na+ ions out and two K+ ions in for each ATP used (page 2)."
+    },
+    {
+      "keywords": ["mitochond", "atp", "cristae", "respiration", "electron transport"],
+      "answer": "Mitochondria are the main site of aerobic respiration. Their inner membrane folds into cristae, which increase the surface area for the electron transport chain. Electrons from NADH and FADH2 pump protons into the intermembrane space, and ATP synthase uses that flow to produce most of the cell's ATP (page 3)."
+    },
+    {
+      "keywords": ["prokaryot", "eukaryot", "nucleoid", "nucleus"],
+      "answer": "Prokaryotic cells, such as bacteria, have no membrane-bound nucleus; their DNA sits in the nucleoid. Eukaryotic cells have a membrane-bound nucleus and organelles that separate chemical reactions into compartments (page 1)."
+    },
+    {
+      "keywords": ["ribosome", "translation", "mrna", "protein synthesis"],
+      "answer": "Ribosomes translate messenger RNA into proteins. They can float freely in the cytoplasm or attach to the rough endoplasmic reticulum, which helps fold and modify the proteins they produce (page 3)."
+    },
+    {
+      "keywords": ["photosynthesis", "chloroplast", "calvin", "thylakoid", "chlorophyll"],
+      "answer": "Chloroplasts carry out photosynthesis: light energy, carbon dioxide, and water become glucose and oxygen. The light-dependent reactions occur in the thylakoid membranes, and the Calvin cycle occurs in the stroma (page 3)."
+    },
+    {
+      "keywords": ["mitosis", "meiosis", "cell division", "cell cycle", "gamete"],
+      "answer": "Mitosis produces two genetically identical daughter cells and is used for growth, repair, and asexual reproduction. Meiosis produces gametes with half the chromosome number and creates variation through crossing over and independent assortment. The cell cycle is interphase (G1, S, G2), mitosis, and cytokinesis (page 4)."
+    },
+    {
+      "keywords": ["fermentation", "lactic", "alcoholic", "anaerobic"],
+      "answer": "Fermentation happens when oxygen is unavailable. It regenerates NAD+ so glycolysis can continue. Lactic acid fermentation produces lactate, alcoholic fermentation produces ethanol and CO2, and both make far less ATP than aerobic respiration (page 3)."
+    },
+    {
+      "keywords": ["golgi", "lysosome", "vacuole", "organelle"],
+      "answer": "The Golgi apparatus modifies, sorts, and packages proteins and lipids. Lysosomes contain digestive enzymes that break down worn-out organelles and invaders, and vacuoles store water, nutrients, and waste. Plant cells usually have a large central vacuole for turgor pressure (page 3)."
+    }
+  ],
+  "fallback": "This lecture covers cell theory, the plasma membrane, organelles, energy and metabolism, and cell division. Try asking about the membrane, active transport, mitochondria, ATP, ribosomes, photosynthesis, mitosis, or meiosis. You can also open the Study Pack for a structured summary (pages 1-4)."
+}
