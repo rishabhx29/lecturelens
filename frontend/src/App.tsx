@@ -6,6 +6,7 @@ import "./index.css";
 import Layout from "./routes/layout";
 import Documents from "./routes/documents";
 import Chat from "./routes/chat";
+import { AuthFooter, AuthHeader } from "./components/AuthBrand";
 
 Amplify.configure({
   Auth: {
@@ -57,6 +58,14 @@ function App() {
   return <RouterProvider router={router} />;
 }
 
-const AuthenticatedApp = withAuthenticator(App, { hideSignUp: true });
+const AuthenticatedApp = withAuthenticator(App, {
+  hideSignUp: true,
+  variation: "default",
+  loginMechanisms: ["email"],
+  components: {
+    Header: AuthHeader,
+    Footer: AuthFooter,
+  },
+});
 
 export default AuthenticatedApp;

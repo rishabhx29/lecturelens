@@ -2,122 +2,119 @@ import { Document } from "../common/types";
 import { getDateTime } from "../common/utilities";
 import { filesize } from "filesize";
 import {
-  DocumentIcon,
-  CircleStackIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  CloudIcon,
-  CogIcon,
+  ChatBubbleLeftRightIcon,
+  DocumentTextIcon,
   TrashIcon,
-  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { del } from "aws-amplify/api";
-import {useNavigate} from "react-router-dom";
-import {useState} from "react";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import StatusBadge from "./StatusBadge";
 
 interface DocumentDetailProps {
   document: Document;
   onDocumentDeleted?: (document?: Document) => void;
 }
 
-const DocumentDetail: React.FC<DocumentDetailProps> = ({document, onDocumentDeleted}) => {
+const DocumentDetail: React.FC<DocumentDetailProps> = ({
+  document,
+  onDocumentDeleted,
+}) => {
   const navigate = useNavigate();
-  const [deleteStatus, setDeleteStatus] = useState<string>("idle");
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting">(
+    "idle"
+  );
 
   const deleteDocument = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
+    event.stopPropagation();
+    if (deleteStatus === "deleting") return;
+
     setDeleteStatus("deleting");
-    await del({
-      apiName: "serverless-pdf-chat",
-      path: `doc/${document.documentid}`,
-    }).response;
-    setDeleteStatus("idle");
-    if (onDocumentDeleted) onDocumentDeleted(document);
-    else navigate(`/`);
+    try {
+      await del({
+        apiName: "serverless-pdf-chat",
+        path: `doc/${document.documentid}`,
+      }).response;
+
+      if (onDocumentDeleted) onDocumentDeleted(document);
+      else navigate("/");
+    } catch (error) {
+      console.error("Failed to delete document", error);
+    } finally {
+      setDeleteStatus("idle");
+    }
   };
 
+  const threadCount = document.conversations?.length ?? 0;
+
   return (
-    <>
-      <h3 className="text-center mb-3 text-lg font-bold tracking-tight text-gray-900">
-        {document.filename}
-      </h3>
-      <div className="flex flex-col space-y-2">
-        <div className="inline-flex items-center">
-          <DocumentIcon className="w-4 h-4 mr-2" />
-          {document.pages} pages
-        </div>
-        <div className="inline-flex items-center">
-          <CircleStackIcon className="w-4 h-4 mr-2" />
-          {filesize(Number(document.filesize)).toString()}
-        </div>
-        <div className="inline-flex items-center">
-          <ClockIcon className="w-4 h-4 mr-2" />
-          {getDateTime(document.created)}
-        </div>
-        {document.docstatus === "UPLOADED" && (
-          <div className="flex flex-row justify-center pt-4">
-            <span className="inline-flex items-center self-start bg-gray-100 text-gray-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
-              <CloudIcon className="w-4 h-4 mr-1" />
-              Awaiting processing
-            </span>
-          </div>
-        )}
-        {document.docstatus === "PROCESSING" && (
-          <div className="flex flex-row justify-center pt-4">
-            <span className="inline-flex items-center self-start bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
-              <CogIcon className="w-4 h-4 mr-1 animate-spin" />
-              Processing document
-            </span>
-          </div>
-        )}
-        {document.docstatus === "READY" && (
-          <div className="flex flex-row pt-4">
-            <div className="flex flex-row justify-center flex-grow pt-2">
-              <span className="inline-flex items-center self-start bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
-                <CheckCircleIcon className="w-4 h-4 mr-1" />
-                Ready to chat
-              </span>
-            </div>
-            <div className="flex flex-row">
-              <button
-                onClick={deleteDocument}
-                aria-label={`Delete ${document.filename}`}
-                className="text-gray-700 hover:bg-gray-700 hover:text-white focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg p-2"
-              >
-                <TrashIcon
-                  className={`w-4 h-4 mr-1 ${
-                    deleteStatus === "deleting" ? "animate-spin" : ""
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-        )}
-        {document.docstatus === "FAILED" && (
-          <div className="flex flex-row pt-4">
-            <div className="flex flex-row justify-center flex-grow pt-2">
-              <span className="inline-flex items-center self-start bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
-                <XCircleIcon className="w-4 h-4 mr-1" />
-                Processing failed
-              </span>
-            </div>
-            <div className="flex flex-row">
-              <button
-                onClick={deleteDocument}
-                aria-label={`Delete ${document.filename}`}
-                className="text-gray-700 hover:bg-gray-700 hover:text-white focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg p-2"
-              >
-                <TrashIcon
-                  className={`w-4 h-4 mr-1 ${
-                    deleteStatus === "deleting" ? "animate-spin" : ""
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-        )}
+    <div>
+      <div className="flex items-start justify-between gap-3">
+        <p className="eyebrow">Lecture file</p>
+        <StatusBadge status={document.docstatus} />
       </div>
-    </>
+
+      <div className="mt-4 flex items-start gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cobalt text-white">
+          <DocumentTextIcon className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 pt-0.5">
+          <h2 className="break-words font-display text-[1.25rem] font-semibold leading-[1.05] tracking-[-0.04em] text-ink">
+            {document.filename}
+          </h2>
+          <p className="mt-1.5 text-xs text-ink-muted">
+            {document.pages} pages · {filesize(Number(document.filesize)).toString()}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line">
+        <div className="bg-paper-light p-3">
+          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
+            Added
+          </p>
+          <p className="mt-1 text-[11px] leading-5 text-ink-soft">
+            {getDateTime(document.created)}
+          </p>
+        </div>
+        <div className="bg-paper-light p-3">
+          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
+            Threads
+          </p>
+          <p className="mt-1 flex items-center gap-1.5 text-[11px] leading-5 text-ink-soft">
+            <ChatBubbleLeftRightIcon
+              className="h-3.5 w-3.5 text-ink-muted"
+              aria-hidden="true"
+            />
+            {threadCount} conversation{threadCount === 1 ? "" : "s"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <p className="text-[11px] leading-5 text-ink-muted">
+          {document.docstatus === "READY"
+            ? "Ready for questions and a Study Pack."
+            : document.docstatus === "FAILED"
+              ? "Processing failed. Remove it and try again."
+              : "Hang tight while this lecture is indexed."}
+        </p>
+        <button
+          onClick={deleteDocument}
+          disabled={deleteStatus === "deleting"}
+          aria-label={`Delete ${document.filename}`}
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-muted transition hover:bg-coral/10 hover:text-coral disabled:opacity-40"
+        >
+          <TrashIcon
+            className={`h-4 w-4 ${
+              deleteStatus === "deleting" ? "animate-spin" : ""
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+    </div>
   );
 };
 

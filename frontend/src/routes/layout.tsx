@@ -1,18 +1,27 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { signOut, fetchUserAttributes } from "aws-amplify/auth";
 import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
 
 const Layout: React.FC = () => {
+  const { pathname } = useLocation();
   const [userInfo, setUserInfo] = useState<{
     attributes: Awaited<ReturnType<typeof fetchUserAttributes>>;
   } | null>(null);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  useEffect(() => {
     (async () => {
-      const attributes = await fetchUserAttributes();
-      setUserInfo({attributes})
+      try {
+        const attributes = await fetchUserAttributes();
+        setUserInfo({ attributes });
+      } catch (error) {
+        console.error("Failed to load user attributes", error);
+      }
     })();
   }, []);
 
@@ -24,16 +33,14 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <div>
-        <Navigation
-          userInfo={userInfo}
-          handleSignOutClick={handleSignOutClick}
-        />
-        <div className="container mt-6 mb-6">
-          <Outlet />
-        </div>
-      </div>
+    <div className="flex min-h-screen flex-col">
+      <Navigation
+        userInfo={userInfo}
+        handleSignOutClick={handleSignOutClick}
+      />
+      <main className="site-container w-full flex-1 py-7 sm:py-9">
+        <Outlet />
+      </main>
       <Footer />
     </div>
   );

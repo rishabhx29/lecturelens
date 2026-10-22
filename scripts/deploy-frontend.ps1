@@ -56,6 +56,7 @@ aws cloudformation deploy `
     --stack-name $FrontendStackName `
     --region $Region `
     --capabilities CAPABILITY_IAM `
+    --no-fail-on-empty-changeset `
     --parameter-overrides "BucketPrefix=$BucketPrefix" `
     @profileArgs
 if ($LASTEXITCODE -ne 0) {

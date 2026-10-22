@@ -1,199 +1,348 @@
-import { ChangeEvent, useState, useEffect } from "react";
+import {
+  ChangeEvent,
+  DragEvent,
+  useRef,
+  useState,
+} from "react";
 import { get } from "aws-amplify/api";
 import { filesize } from "filesize";
 import {
-  DocumentIcon,
   CheckCircleIcon,
   CloudArrowUpIcon,
-  XCircleIcon,
-  ArrowLeftCircleIcon,
+  DocumentTextIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
+import SectionHeading from "./SectionHeading";
 
 interface DocumentUploaderProps {
-  onDocumentUploaded?:() => void
+  onDocumentUploaded?: () => void;
 }
-const DocumentUploader: React.FC<DocumentUploaderProps> = ({onDocumentUploaded}) => {
-  const [inputStatus, setInputStatus] = useState<string>("idle");
-  const [buttonStatus, setButtonStatus] = useState<string>("ready");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  useEffect(() => {
-    if (selectedFile) {
-      if (selectedFile.type === "application/pdf") {
-        setInputStatus("valid");
-      } else {
-        setSelectedFile(null);
-      }
+type UploadStatus = "ready" | "uploading" | "success" | "error";
+
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
+
+const DocumentUploader: React.FC<DocumentUploaderProps> = ({
+  onDocumentUploaded,
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>("ready");
+  const [isDragging, setIsDragging] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const acceptFile = (file: File | null | undefined) => {
+    if (!file) return;
+
+    const isPdf =
+      file.type === "application/pdf" ||
+      file.name.toLowerCase().endsWith(".pdf");
+
+    if (!isPdf) {
+      setSelectedFile(null);
+      setUploadStatus("ready");
+      setErrorMessage("That file isn't a PDF. Choose a .pdf lecture file.");
+      return;
     }
-  }, [selectedFile]);
+
+    if (file.size > MAX_FILE_BYTES) {
+      setSelectedFile(null);
+      setUploadStatus("ready");
+      setErrorMessage("That PDF is over 20 MB. Try a smaller export.");
+      return;
+    }
+
+    setSelectedFile(file);
+    setUploadStatus("ready");
+    setErrorMessage(null);
+  };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    setSelectedFile(file || null);
+    acceptFile(event.target.files?.[0]);
+    event.target.value = "";
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+    acceptFile(event.dataTransfer.files?.[0]);
   };
 
   const uploadFile = async () => {
-    if(selectedFile) {
-      setButtonStatus("uploading");
+    if (!selectedFile || uploadStatus === "uploading") return;
+
+    setUploadStatus("uploading");
+    setErrorMessage(null);
+
+    try {
       const response = await get({
         apiName: "serverless-pdf-chat",
         path: "generate_presigned_url",
         options: {
           headers: { "Content-Type": "application/json" },
-          queryParams: {
-            "file_name": selectedFile?.name
-          }
+          queryParams: { file_name: selectedFile.name },
         },
-      }).response
-      const presignedUrl = await response.body.json() as { presignedurl: string }
-      fetch(presignedUrl?.presignedurl, {
+      }).response;
+
+      const payload = (await response.body.json()) as {
+        presignedurl?: string;
+      };
+
+      if (!payload.presignedurl) {
+        throw new Error("The upload URL was not returned.");
+      }
+
+      const upload = await fetch(payload.presignedurl, {
         method: "PUT",
         body: selectedFile,
         headers: { "Content-Type": "application/pdf" },
-      }).then(() => {
-        setButtonStatus("success");
-        if (onDocumentUploaded) onDocumentUploaded();
       });
+
+      if (!upload.ok) {
+        throw new Error("The PDF could not be uploaded.");
+      }
+
+      setUploadStatus("success");
+      onDocumentUploaded?.();
+    } catch (error) {
+      console.error("Failed to upload document", error);
+      setUploadStatus("error");
+      setErrorMessage(
+        "The upload didn't finish. Check your connection and try again."
+      );
     }
   };
 
   const resetInput = () => {
     setSelectedFile(null);
-    setInputStatus("idle");
-    setButtonStatus("ready");
+    setUploadStatus("ready");
+    setErrorMessage(null);
+    if (inputRef.current) inputRef.current.value = "";
   };
 
+  const isUploading = uploadStatus === "uploading";
+  const isSuccess = uploadStatus === "success";
+
   return (
-    <div id="upload-lecture" className="scroll-mt-6">
-      <h2 className="text-2xl font-bold">Add a lecture PDF</h2>
-      <p className="pb-4 pt-1 text-sm text-gray-500">
-        Once it finishes processing you can chat with it and generate a Study
-        Pack.
-      </p>
-      {inputStatus === "idle" && (
-        <div className="flex items-center justify-center w-full">
-          <label
-            htmlFor="dropzone-file"
-            className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
-          >
-            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <CloudArrowUpIcon className="w-12 h-12 mb-3 text-gray-400" />
+    <section id="upload-lecture" className="scroll-mt-28 pb-12 pt-2 sm:pb-16">
+      <SectionHeading
+        index="01"
+        label="New lecture"
+        title="Add a PDF. Get a study plan."
+        description="Your file stays in your private AWS storage. Processing usually takes under a minute."
+      />
 
-              <p className="mb-2 text-sm text-gray-500">
-                <span className="font-semibold">Click to upload</span> a lecture
-                PDF
-              </p>
-              <p className="text-xs text-gray-500">Only .pdf accepted</p>
-            </div>
+      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_310px]">
+        <div
+          onDragEnter={(event) => {
+            event.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={(event) => {
+            if (event.currentTarget === event.target) setIsDragging(false);
+          }}
+          onDrop={handleDrop}
+          className={`relative overflow-hidden rounded-[28px] border-2 border-dashed transition duration-200 ${
+            isDragging
+              ? "border-cobalt bg-cobalt-soft/60"
+              : "border-line bg-paper-light/70 hover:border-ink/25 hover:bg-paper-light"
+          }`}
+        >
+          <input
+            ref={inputRef}
+            id="dropzone-file"
+            type="file"
+            accept=".pdf,application/pdf"
+            onChange={handleFileChange}
+            className="sr-only"
+          />
 
-            <input
-              onChange={handleFileChange}
-              id="dropzone-file"
-              type="file"
-              className="hidden"
-            />
-          </label>
-        </div>
-      )}
-      {inputStatus === "valid" && (
-        <div className="flex items-center justify-center w-full">
-          <div className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg bg-gray-50">
-            <>
-              <div className="flex flex-row items-center mb-5">
-                <DocumentIcon className="w-14 h-14 text-gray-400" />
-                <div className="flex flex-col ml-2">
-                  <p className="font-bold mb-1">{selectedFile?.name}</p>
+          {!selectedFile ? (
+            <label
+              htmlFor="dropzone-file"
+              className="flex min-h-[252px] cursor-pointer flex-col items-center justify-center px-6 py-10 text-center"
+            >
+              <span
+                className={`flex h-14 w-14 items-center justify-center rounded-full border transition ${
+                  isDragging
+                    ? "border-cobalt/30 bg-cobalt text-white"
+                    : "border-line bg-white text-cobalt"
+                }`}
+              >
+                <CloudArrowUpIcon className="h-6 w-6" aria-hidden="true" />
+              </span>
+              <span className="mt-5 font-display text-2xl font-semibold tracking-[-0.045em] text-ink">
+                {isDragging ? "Drop it right here" : "Drop your lecture here"}
+              </span>
+              <span className="mt-2 text-sm text-ink-muted">
+                or{" "}
+                <span className="link-underline font-medium text-ink">
+                  browse files
+                </span>{" "}
+                · PDF up to 20 MB
+              </span>
+              <span className="mt-5 rounded-full border border-line bg-paper px-3 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
+                Text + page numbers stay intact
+              </span>
+            </label>
+          ) : (
+            <div className="flex min-h-[252px] flex-col justify-between p-5 sm:p-7">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3.5">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-cobalt text-white">
+                    <DocumentTextIcon
+                      className="h-6 w-6"
+                      aria-hidden="true"
+                    />
+                  </span>
+                  <div className="min-w-0 pt-0.5">
+                    <p className="eyebrow">Selected PDF</p>
+                    <p className="mt-1.5 truncate font-display text-xl font-semibold tracking-[-0.035em] text-ink">
+                      {selectedFile.name}
+                    </p>
+                    <p className="mt-1 text-xs text-ink-muted">
+                      {filesize(selectedFile.size).toString()} · ready to index
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetInput}
+                  disabled={isUploading}
+                  className="icon-button h-9 w-9 border-line bg-transparent"
+                  aria-label="Remove selected file"
+                >
+                  <XMarkIcon className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+
+              {isUploading && (
+                <div className="mt-8">
+                  <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
+                    <span>Uploading to your library</span>
+                    <span>Working</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line-soft">
+                    <div className="h-full w-2/3 animate-pulse rounded-full bg-cobalt" />
+                  </div>
+                </div>
+              )}
+
+              {isSuccess && (
+                <div className="mt-8 flex items-start gap-3 rounded-2xl border border-moss/20 bg-moss/10 p-3.5 text-sm text-moss">
+                  <CheckCircleIcon
+                    className="mt-0.5 h-4 w-4 shrink-0"
+                    aria-hidden="true"
+                  />
                   <p>
-                    {filesize(selectedFile ? selectedFile.size : 0).toString()}
+                    Uploaded. LectureLens is indexing the pages — it will appear
+                    in the library in a moment.
                   </p>
                 </div>
-              </div>
-              <div className="flex flex-row items-center">
-                {buttonStatus === "ready" && (
+              )}
+
+              {uploadStatus === "error" && errorMessage && (
+                <p
+                  role="alert"
+                  className="mt-6 rounded-xl border border-coral/25 bg-coral/10 p-3 text-sm text-coral"
+                >
+                  {errorMessage}
+                </p>
+              )}
+
+              <div className="mt-7 flex flex-wrap items-center gap-2">
+                {isSuccess ? (
                   <button
-                    onClick={resetInput}
                     type="button"
-                    className="inline-flex items-center text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg px-3 py-2 text-sm mr-2 mb-2 "
-                  >
-                    <XCircleIcon className="w-5 h-5 mr-1.5" />
-                    Cancel
-                  </button>
-                )}
-                {buttonStatus === "uploading" && (
-                  <button
-                    disabled
                     onClick={resetInput}
-                    type="button"
-                    className="inline-flex items-center text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg px-3 py-2 text-sm mr-2 mb-2 "
+                    className="btn btn-secondary"
                   >
-                    <XCircleIcon className="w-5 h-5 mr-1.5" />
-                    Cancel
+                    Upload another PDF
                   </button>
-                )}
-                {buttonStatus === "success" && (
+                ) : (
                   <button
-                    onClick={resetInput}
                     type="button"
-                    className="inline-flex items-center text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg px-3 py-2 text-sm mr-2 mb-2 "
-                  >
-                    <ArrowLeftCircleIcon className="w-5 h-5 mr-1.5" />
-                    Upload another lecture
-                  </button>
-                )}
-                {buttonStatus === "ready" && (
-                  <button
                     onClick={uploadFile}
-                    type="button"
-                    className="inline-flex items-center bg-violet-900 text-white border border-gray-300 focus:outline-none hover:bg-violet-700 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg px-3 py-2 text-sm mr-2 mb-2 "
+                    disabled={isUploading}
+                    className="btn btn-primary"
                   >
-                    <CloudArrowUpIcon className="w-5 h-5 mr-1.5" />
-                    Upload lecture
-                  </button>
-                )}
-                {buttonStatus === "uploading" && (
-                  <button
-                    disabled
-                    onClick={uploadFile}
-                    type="button"
-                    className="inline-flex items-center bg-violet-900 text-white border border-gray-300 focus:outline-none hover:bg-violet-700 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg px-3 py-2 text-sm mr-2 mb-2 "
-                  >
-                    <svg
+                    <CloudArrowUpIcon
+                      className="h-4 w-4"
                       aria-hidden="true"
-                      role="status"
-                      className="inline w-4 h-4 mr-3 text-white animate-spin"
-                      viewBox="0 0 100 101"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
-                        fill="#E5E7EB"
-                      />
-                      <path
-                        d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                    Uploading...
+                    />
+                    {isUploading
+                      ? "Uploading…"
+                      : uploadStatus === "error"
+                        ? "Try again"
+                        : "Upload lecture"}
                   </button>
                 )}
-                {buttonStatus === "success" && (
+                {!isSuccess && (
                   <button
-                    disabled
-                    onClick={uploadFile}
                     type="button"
-                    className="inline-flex items-center bg-violet-900 text-white border border-gray-300 focus:outline-none hover:bg-violet-700 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg px-3 py-2 text-sm mr-2 mb-2 "
+                    onClick={resetInput}
+                    disabled={isUploading}
+                    className="btn btn-ghost"
                   >
-                    <CheckCircleIcon className="w-5 h-5 mr-1.5" />
-                    Upload successful!
+                    Cancel
                   </button>
                 )}
               </div>
-            </>
-          </div>
+            </div>
+          )}
         </div>
+
+        <aside className="rounded-[28px] bg-ink p-5 text-paper sm:p-6">
+          <p className="eyebrow-light">What happens next</p>
+          <ol className="mt-5 space-y-5">
+            {[
+              [
+                "01",
+                "Index the pages",
+                "We pull the text out and keep a page reference for every answer.",
+              ],
+              [
+                "02",
+                "Ask better questions",
+                "Chat with the lecture in plain language, then follow the citation.",
+              ],
+              [
+                "03",
+                "Leave with a pack",
+                "Generate a summary, key concepts, flashcards, and a quiz.",
+              ],
+            ].map(([index, title, copy]) => (
+              <li key={index} className="flex gap-3">
+                <span className="pt-0.5 font-mono text-[9px] tracking-[0.1em] text-lime">
+                  {index}
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-paper">{title}</p>
+                  <p className="mt-1 text-xs leading-5 text-paper/50">{copy}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-7 flex items-center gap-2 border-t border-paper/10 pt-4 font-mono text-[9px] uppercase tracking-[0.13em] text-paper/50">
+            <span className="h-1.5 w-1.5 rounded-full bg-lime" />
+            Usually under a minute
+          </div>
+        </aside>
+      </div>
+
+      {errorMessage && !selectedFile && (
+        <p
+          role="alert"
+          className="mt-3 rounded-xl border border-coral/25 bg-coral/10 px-3 py-2.5 text-sm text-coral"
+        >
+          {errorMessage}
+        </p>
       )}
-    </div>
+    </section>
   );
 };
 

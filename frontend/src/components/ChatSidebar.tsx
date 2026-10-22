@@ -3,10 +3,10 @@ import { Conversation } from "../common/types";
 import { getDateTime } from "../common/utilities";
 import { Params } from "react-router-dom";
 import {
+  ArrowPathIcon,
+  ArrowUpRightIcon,
   BookOpenIcon,
-  ChatBubbleLeftRightIcon,
-  PlusCircleIcon,
-  SparklesIcon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 
 interface ChatSidebarProps {
@@ -27,45 +27,48 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onOpenStudyPack,
 }) => {
   const isReady = conversation.document.docstatus === "READY";
+  const threads = conversation.document.conversations ?? [];
 
   return (
-    <div className="col-span-12 h-full lg:col-span-4">
-      <div className="bg-gray-100 p-5">
+    <aside className="order-2 flex flex-col border-t border-line bg-paper-deep/60 lg:order-1 lg:w-[320px] lg:shrink-0 lg:border-r lg:border-t-0">
+      <div className="p-5 sm:p-6">
         <DocumentDetail document={conversation.document} />
       </div>
-      <div className="border-b border-gray-200 bg-white px-3 py-4">
+
+      <div className="px-5 pb-5">
         <button
           type="button"
           onClick={onOpenStudyPack}
           disabled={!isReady}
           aria-describedby={isReady ? undefined : "study-pack-hint"}
-          className={`group flex w-full items-center rounded-xl px-3.5 py-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 ${
+          className={`group flex w-full items-center gap-3 rounded-2xl p-4 text-left transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt focus-visible:ring-offset-4 focus-visible:ring-offset-paper ${
             isReady
-              ? "bg-gradient-to-r from-violet-950 to-violet-800 text-white shadow-sm hover:from-violet-900 hover:to-violet-700"
-              : "cursor-not-allowed border border-gray-200 bg-gray-50 text-gray-400"
+              ? "bg-cobalt text-white hover:bg-cobalt-dark"
+              : "cursor-not-allowed border border-line bg-paper-light text-ink-muted"
           }`}
         >
-          <BookOpenIcon
-            className={`mr-2.5 h-5 w-5 shrink-0 ${
-              isReady ? "text-violet-200" : "text-gray-400"
+          <span
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+              isReady ? "bg-white/10" : "bg-paper text-ink-muted"
             }`}
-            aria-hidden="true"
-          />
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold">Study Pack</span>
+          >
+            <BookOpenIcon className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-lg font-semibold tracking-[-0.035em]">
+              Study Pack
+            </span>
             <span
-              className={`block text-[11px] ${
-                isReady ? "text-violet-200" : "text-gray-400"
+              className={`mt-0.5 block font-mono text-[9px] uppercase tracking-[0.11em] ${
+                isReady ? "text-white/70" : "text-ink-muted"
               }`}
             >
-              Summary · Flashcards · Quiz
+              Summary · cards · quiz
             </span>
           </span>
-          <SparklesIcon
-            className={`ml-auto h-4 w-4 shrink-0 ${
-              isReady
-                ? "text-violet-200 transition group-hover:text-white"
-                : "text-gray-300"
+          <ArrowUpRightIcon
+            className={`h-4 w-4 shrink-0 transition ${
+              isReady ? "text-white/70 group-hover:text-white" : "text-ink-muted"
             }`}
             aria-hidden="true"
           />
@@ -73,79 +76,89 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         {!isReady && (
           <p
             id="study-pack-hint"
-            className="mt-2 px-1 text-xs leading-5 text-gray-500"
+            className="mt-2 px-1 text-[11px] leading-5 text-ink-muted"
           >
             Available once this lecture finishes processing.
           </p>
         )}
       </div>
-      <div className="px-3 pt-3 pb-5">
-        {conversationListStatus === "idle" && (
-          <button
-            onClick={addConversation}
-            className="bg-gray-50 w-full inline-flex items-center px-4 py-2.5 border border-gray-100 rounded hover:bg-gray-200"
-          >
-            <PlusCircleIcon className="w-4 h-4 mr-2" />
-            Start a new conversation
-          </button>
-        )}
-        {conversationListStatus === "loading" && (
-          <button
-            disabled
-            onClick={addConversation}
-            className="bg-gray-50 w-full inline-flex items-center px-4 py-2.5 border border-gray-100 rounded hover:bg-gray-200"
-          >
-            <svg
+
+      <div className="border-t border-line px-5 py-5">
+        <div className="flex items-center justify-between">
+          <p className="eyebrow">Threads</p>
+          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
+            {String(threads.length).padStart(2, "0")}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={addConversation}
+          disabled={conversationListStatus === "loading"}
+          className="mt-3 inline-flex h-9 w-full items-center gap-2 rounded-full border border-line bg-paper-light/70 px-3.5 text-xs font-medium text-ink-soft transition hover:border-ink/25 hover:bg-paper-light hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {conversationListStatus === "loading" ? (
+            <ArrowPathIcon
+              className="h-3.5 w-3.5 animate-spin"
               aria-hidden="true"
-              role="status"
-              className="inline w-4 h-4 mr-2 text-gray-200 animate-spin"
-              viewBox="0 0 100 101"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
-                fill="currentColor"
-              />
-              <path
-                d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
-                fill="#4C1D95"
-              />
-            </svg>
-            Start a new conversation
-          </button>
-        )}
-        {conversation &&
-          conversation.document.conversations.map((conversation, i) => (
-            <div key={i}>
-              {params.conversationid === conversation.conversationid && (
-                <button
-                  disabled={
-                    params.conversationid === conversation.conversationid
-                  }
-                  className="bg-gray-500 text-white w-full inline-flex items-center mt-2 px-4 py-2.5 border border-gray-100 rounded"
+            />
+          ) : (
+            <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+          {conversationListStatus === "loading"
+            ? "Starting thread…"
+            : "New thread"}
+        </button>
+
+        <div className="mt-2 max-h-[210px] space-y-1 overflow-y-auto pr-1">
+          {threads.map((thread, index) => {
+            const active = params.conversationid === thread.conversationid;
+            return (
+              <button
+                key={thread.conversationid}
+                id={thread.conversationid}
+                type="button"
+                onClick={switchConversation}
+                aria-current={active ? "page" : undefined}
+                className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition ${
+                  active
+                    ? "bg-ink text-paper"
+                    : "text-ink-soft hover:bg-paper-light hover:text-ink"
+                }`}
+              >
+                <span
+                  className={`font-mono text-[9px] tracking-[0.1em] ${
+                    active ? "text-lime" : "text-ink-muted"
+                  }`}
                 >
-                  <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
-                  {getDateTime(conversation.created)}
-                </button>
-              )}
-              {params.conversationid !== conversation.conversationid && (
-                <button
-                  id={conversation.conversationid}
-                  onClick={switchConversation}
-                  disabled={
-                    params.conversationid === conversation.conversationid
-                  }
-                  className="bg-gray-50 w-full inline-flex items-center mt-2 px-4 py-2.5 border border-gray-100 rounded hover:bg-gray-200"
-                >
-                  <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
-                  {getDateTime(conversation.created)}
-                </button>
-              )}
-            </div>
-          ))}
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-medium">
+                    Thread {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span
+                    className={`mt-0.5 block truncate text-[10px] ${
+                      active ? "text-paper/50" : "text-ink-muted"
+                    }`}
+                  >
+                    {getDateTime(thread.created)}
+                  </span>
+                </span>
+                {active && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-lime" />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      <div className="mt-auto hidden items-center gap-2 border-t border-line px-5 py-4 font-mono text-[9px] uppercase tracking-[0.13em] text-ink-muted lg:flex">
+        <span className="h-1.5 w-1.5 rounded-full bg-cobalt" />
+        Grounded in {conversation.document.pages} pages
+      </div>
+    </aside>
   );
 };
 

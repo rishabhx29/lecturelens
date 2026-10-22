@@ -1,6 +1,11 @@
-import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
-import Loading from "../../public/loading-dots.svg";
+import React, { useEffect, useRef } from "react";
+import {
+  BookOpenIcon,
+  PaperAirplaneIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
 import { Conversation } from "../common/types";
+import { LensMark } from "./Logo";
 
 interface ChatMessagesProps {
   conversation: Conversation;
@@ -9,6 +14,30 @@ interface ChatMessagesProps {
   handleKeyPress: (event: React.KeyboardEvent<HTMLInputElement>) => void;
   prompt: string;
   submitMessage: () => Promise<void>;
+  onSuggestion?: (text: string) => void;
+  onOpenStudyPack?: () => void;
+}
+
+const SUGGESTIONS = [
+  "What is the main idea of this lecture?",
+  "Explain the hardest concept simply.",
+  "Quiz me on the key facts.",
+];
+
+function renderMessageContent(content: string) {
+  const parts = content.split(/(\(pages? [^)]+\))/gi);
+  return parts.map((part, index) =>
+    /^\(pages?/i.test(part) ? (
+      <mark
+        key={`${part}-${index}`}
+        className="mx-1 inline-block rounded-md bg-cobalt-soft px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-cobalt"
+      >
+        {part}
+      </mark>
+    ) : (
+      <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>
+    )
+  );
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -18,97 +47,205 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   submitMessage,
   handlePromptChange,
   handleKeyPress,
+  onSuggestion,
+  onOpenStudyPack,
 }) => {
   const isReady = conversation.document.docstatus === "READY";
-  const inputDisabled = messageStatus === "loading" || !isReady;
+  const isSending = messageStatus === "loading";
+  const inputDisabled = isSending || !isReady;
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const element = messagesRef.current;
+    if (!element) return;
+    element.scrollTop = element.scrollHeight;
+  }, [conversation.messages.length, messageStatus]);
+
+  const chooseSuggestion = (suggestion: string) => {
+    onSuggestion?.(suggestion);
+    inputRef.current?.focus();
+  };
 
   return (
-    <div className="flex flex-col justify-between h-full overflow-y-auto col-span-12 p-5 border-t border-gray-200 lg:col-span-8 lg:border-l lg:border-t-0">
-      <div className="pb-5">
-        <div className="grid gap-5">
-          {conversation.messages.map((message, i) => (
-            <div
-              className={`${
-                message.type === "ai"
-                  ? "justify-self-start w-fit rounded border border-gray-100 px-5 py-3.5 text-gray-800"
-                  : "" +
-                    "justify-self-end w-fit bg-slate-100 rounded border border-gray-100 px-5 py-3.5 text-gray-800"
-              }`}
-              key={i}
+    <section className="order-1 flex min-h-[560px] min-w-0 flex-1 flex-col bg-paper-light lg:order-2 lg:min-h-0">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-7">
+        <div className="flex items-center gap-2.5">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-moss/50" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-moss" />
+          </span>
+          <p className="eyebrow">Live thread</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="hidden font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted sm:inline">
+            {conversation.document.pages} pages indexed
+          </span>
+          {isReady && onOpenStudyPack && (
+            <button
+              type="button"
+              onClick={onOpenStudyPack}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full bg-ink px-3 font-mono text-[9px] uppercase tracking-[0.1em] text-paper transition hover:bg-cobalt focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt focus-visible:ring-offset-2 lg:hidden"
             >
-              <div className="prose">
-                <p>{message.data.content}</p>
-              </div>
-            </div>
-          ))}
-          {messageStatus === "loading" && (
-            <div className="justify-self-start w-fit rounded border border-gray-100 px-5 py-3.5 text-gray-800">
-              <img src={Loading} width={40} className="py-2 mx-2" />
+              <BookOpenIcon className="h-3.5 w-3.5" aria-hidden="true" />
+              Study pack
+            </button>
+          )}
+        </div>
+      </header>
+
+      <div
+        ref={messagesRef}
+        className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-7 sm:py-8"
+      >
+        <div className="mx-auto max-w-3xl">
+          {conversation.messages.length === 0 && (
+            <div className="flex flex-col items-start py-10 sm:py-16">
+              <span className="eyebrow">Thread 01 / Ready</span>
+              <h2 className="mt-4 max-w-lg font-display text-[clamp(2.2rem,4vw,3.4rem)] font-semibold leading-[0.93] tracking-[-0.06em] text-ink">
+                Ask the lecture.
+              </h2>
+              <p className="mt-4 max-w-md text-sm leading-7 text-ink-muted">
+                Start with a question you didn&apos;t get to ask in class. Every
+                answer stays grounded in the pages of this PDF.
+              </p>
             </div>
           )}
+
+          <div className="space-y-7">
+            {conversation.messages.map((message, index) => {
+              const isAi = message.type === "ai";
+              return (
+                <div
+                  key={`${message.type}-${index}`}
+                  className={`flex gap-3 ${isAi ? "justify-start" : "justify-end"}`}
+                >
+                  {isAi && (
+                    <span className="mt-1 hidden h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-ink text-paper sm:flex">
+                      <LensMark className="h-[17px] w-[17px]" />
+                    </span>
+                  )}
+                  <div
+                    className={`max-w-[86%] ${
+                      isAi ? "min-w-0" : "flex justify-end"
+                    }`}
+                  >
+                    {isAi && (
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-ink-muted">
+                          LectureLens
+                        </span>
+                        <span className="h-1 w-1 rounded-full bg-line" />
+                        <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-ink-muted">
+                          Grounded
+                        </span>
+                      </div>
+                    )}
+                    <div
+                      className={
+                        isAi
+                          ? "rounded-2xl rounded-tl-md border border-line bg-white/70 px-4 py-3.5 text-[15px] leading-7 text-ink-soft shadow-[0_10px_24px_-22px_rgba(20,21,24,0.35)]"
+                          : "rounded-2xl rounded-br-md bg-cobalt px-4 py-3.5 text-[15px] leading-7 text-white shadow-soft"
+                      }
+                    >
+                      <p className="whitespace-pre-line">
+                        {renderMessageContent(message.data.content)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {isSending && (
+              <div className="flex gap-3">
+                <span className="mt-1 hidden h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-ink text-paper sm:flex">
+                  <LensMark className="h-[17px] w-[17px]" />
+                </span>
+                <div>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-ink-muted">
+                      LectureLens
+                    </span>
+                  </div>
+                  <div className="flex h-[52px] items-center gap-1.5 rounded-2xl rounded-tl-md border border-line bg-white/70 px-4">
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="relative w-full">
-        <div className="relative">
-          <input
-            disabled={inputDisabled}
-            type="text"
-            id="prompt"
-            value={prompt}
-            onChange={handlePromptChange}
-            onKeyDown={handleKeyPress}
-            className={
-              inputDisabled
-                ? "block w-full p-4 pl-4 text-sm text-gray-500 border border-gray-200 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
-                : "block w-full p-4 pl-4 text-sm text-gray-900 border border-gray-200 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
-            }
-            placeholder={
-              !isReady
-                ? conversation.document.docstatus === "FAILED"
-                  ? "Processing failed. Delete and re-upload this PDF."
-                  : "Your lecture is still processing..."
-                : "Ask " + conversation.document.filename + " anything..."
-            }
-          />
-          {messageStatus === "idle" && isReady && (
-            <button
-              type="submit"
-              aria-label="Send message"
-              className="text-gray-700 absolute right-2 bottom-2 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2"
-              onClick={submitMessage}
-            >
-              <PaperAirplaneIcon className="w-6 h-6" />
-            </button>
+      <div className="shrink-0 border-t border-line bg-paper/60 p-4 sm:p-5">
+        <div className="mx-auto max-w-3xl">
+          {isReady && onSuggestion && (
+            <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-0.5 hide-scrollbar">
+              <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.13em] text-ink-muted">
+                Try
+              </span>
+              {SUGGESTIONS.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => chooseSuggestion(suggestion)}
+                  className="shrink-0 rounded-full border border-line bg-paper-light px-3 py-1.5 text-[11px] text-ink-soft transition hover:border-cobalt/30 hover:bg-cobalt-soft hover:text-cobalt"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
           )}
-          {messageStatus === "loading" && (
-            <button
-              disabled
-              type="submit"
-              className="text-gray-700 absolute right-2 bottom-2 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2"
-            >
-              <svg
-                aria-hidden="true"
-                role="status"
-                className="inline w-5 h-5 text-gray-200 animate-spin dark:text-gray-600"
-                viewBox="0 0 100 101"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
+
+          <div className="overflow-hidden rounded-2xl border border-line bg-white/75 shadow-soft transition focus-within:border-cobalt/50 focus-within:ring-2 focus-within:ring-cobalt/10">
+            <div className="flex items-center gap-1 px-2.5 py-2">
+              <span className="pl-1 text-ink-muted">
+                <SparklesIcon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <input
+                ref={inputRef}
+                disabled={inputDisabled}
+                type="text"
+                id="prompt"
+                value={prompt}
+                onChange={handlePromptChange}
+                onKeyDown={handleKeyPress}
+                className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm text-ink outline-none placeholder:text-ink-muted disabled:cursor-not-allowed"
+                placeholder={
+                  !isReady
+                    ? conversation.document.docstatus === "FAILED"
+                      ? "Processing failed. Delete and re-upload this PDF."
+                      : "Your lecture is still processing…"
+                    : `Ask ${conversation.document.filename} anything…`
+                }
+              />
+              <button
+                type="button"
+                onClick={submitMessage}
+                disabled={inputDisabled || !prompt.trim()}
+                aria-label="Send message"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ink text-paper transition hover:bg-cobalt disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-muted"
               >
-                <path
-                  d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
-                  fill="currentColor"
-                />
-                <path
-                  d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
-                  fill="#4C1D95"
-                />
-              </svg>
-            </button>
-          )}
+                {isSending ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-paper/30 border-t-paper" />
+                ) : (
+                  <PaperAirplaneIcon className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-line/70 px-3.5 py-2 font-mono text-[9px] uppercase tracking-[0.11em] text-ink-muted">
+              <span>{isReady ? "Enter to send" : "Waiting for processing"}</span>
+              <span className="hidden sm:inline">
+                {conversation.document.pages} pages indexed
+              </span>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 

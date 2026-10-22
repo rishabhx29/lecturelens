@@ -1,3 +1,293 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --amplify-colors-brand-primary-10: #e9edff;
+    --amplify-colors-brand-primary-20: #d5dcff;
+    --amplify-colors-brand-primary-40: #9aa9ff;
+    --amplify-colors-brand-primary-60: #5872ff;
+    --amplify-colors-brand-primary-80: #2748ff;
+    --amplify-colors-brand-primary-90: #1b34c9;
+    --amplify-colors-brand-primary-100: #14268f;
+    --amplify-colors-font-primary: #141518;
+    --amplify-colors-font-secondary: #57544d;
+    --amplify-colors-font-tertiary: #6e6a61;
+    --amplify-colors-background-primary: #f4f0e6;
+    --amplify-colors-background-secondary: #fbf8f1;
+    --amplify-colors-border-primary: #d8d0c0;
+    --amplify-colors-border-secondary: #e7e0d3;
+    --amplify-fonts-default-variable: "Geist Variable", Geist, ui-sans-serif,
+      system-ui, sans-serif;
+    --amplify-radii-medium: 12px;
+    --amplify-radii-large: 18px;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    background-color: #f4f0e6;
+  }
+
+  body {
+    @apply min-h-screen bg-paper font-sans text-ink antialiased;
+    background-image:
+      radial-gradient(
+        circle at 8% -4%,
+        rgba(39, 72, 255, 0.055),
+        transparent 28rem
+      ),
+      radial-gradient(
+        circle at 96% 22%,
+        rgba(221, 244, 111, 0.16),
+        transparent 26rem
+      ),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+    background-size: auto, auto, 180px 180px;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  ::selection {
+    background: #ddf46f;
+    color: #141518;
+  }
+
+  :focus-visible {
+    outline: 2px solid #2748ff;
+    outline-offset: 3px;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #c9c0af transparent;
+  }
+}
+
+@layer components {
+  .site-container {
+    @apply mx-auto w-full max-w-[1280px] px-5 sm:px-8 lg:px-10;
+  }
+
+  .eyebrow {
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted;
+  }
+
+  .eyebrow-light {
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-paper/60;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .highlight-lime {
+    background-image: linear-gradient(
+      transparent 60%,
+      #ddf46f 60%,
+      #ddf46f 94%,
+      transparent 94%
+    );
+  }
+
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full px-5 text-sm font-medium transition duration-200 ease-out active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply bg-ink text-paper shadow-soft hover:bg-cobalt;
+  }
+
+  .btn-secondary {
+    @apply border border-line bg-paper-light/60 text-ink hover:border-ink/25 hover:bg-paper-light;
+  }
+
+  .btn-lime {
+    @apply bg-lime text-ink hover:bg-[#cbe94f];
+  }
+
+  .btn-ghost {
+    @apply text-ink-soft hover:bg-ink/5 hover:text-ink;
+  }
+
+  .icon-button {
+    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-paper-light/70 text-ink-soft transition hover:border-ink/25 hover:bg-paper-light hover:text-ink disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .surface {
+    @apply rounded-[24px] border border-line bg-paper-light;
+  }
+
+  .surface-hover {
+    @apply transition duration-300 ease-out hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-lift;
+  }
+
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 0 1px;
+    transition: background-size 220ms ease;
+  }
+
+  .link-underline:hover {
+    background-size: 100% 1px;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .page-enter {
+    animation: fade-up 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, #e7e0d3 25%, #f4f0e6 50%, #e7e0d3 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.8s linear infinite;
+  }
+
+  .typing-dot {
+    @apply inline-block h-1.5 w-1.5 rounded-full bg-cobalt;
+    animation: typing-dot 1.2s ease-in-out infinite;
+  }
+
+  .typing-dot:nth-child(2) {
+    animation-delay: 0.16s;
+  }
+
+  .typing-dot:nth-child(3) {
+    animation-delay: 0.32s;
+  }
+
+  .noise-card {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .noise-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.35;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  }
+}
+
+/* Amplify Authenticator: make the sign-in screen feel like part of LectureLens.
+   Amplify v6 renders no `.amplify-authenticator` class — target the data
+   attributes. The root is a grid; filling the viewport centers the card. */
+[data-amplify-authenticator] {
+  min-height: 100dvh;
+  background: transparent;
+}
+
+[data-amplify-authenticator] [data-amplify-container] {
+  padding: 28px 16px;
+}
+
+[data-amplify-authenticator] [data-amplify-router] {
+  border: 1px solid #d8d0c0;
+  border-radius: 26px;
+  background: rgba(251, 248, 241, 0.94);
+  box-shadow: 0 28px 70px -48px rgba(20, 21, 24, 0.5);
+  backdrop-filter: blur(18px);
+}
+
+[data-amplify-authenticator] .amplify-heading {
+  font-family: "Bricolage Grotesque Variable", "Bricolage Grotesque",
+    ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.04em;
+}
+
+[data-amplify-authenticator] .amplify-button--primary {
+  min-height: 44px;
+  border-radius: 999px;
+  border-color: #141518;
+  background-color: #141518;
+  font-weight: 500;
+}
+
+[data-amplify-authenticator] .amplify-button--primary:hover {
+  border-color: #2748ff;
+  background-color: #2748ff;
+}
+
+[data-amplify-authenticator] .amplify-button--link {
+  color: #57544d;
+  font-family: "Geist Mono Variable", "Geist Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+[data-amplify-authenticator] .amplify-button--link:hover {
+  color: #2748ff;
+}
+
+[data-amplify-authenticator] .amplify-input {
+  min-height: 44px;
+  border-radius: 12px;
+  border-color: #d8d0c0;
+  background: #fbf8f1;
+}
+
+[data-amplify-authenticator] .amplify-input:focus {
+  border-color: #2748ff;
+  box-shadow: 0 0 0 3px rgba(39, 72, 255, 0.12);
+}
+
+[data-amplify-authenticator] .amplify-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: #57544d;
+}
+
+[data-amplify-authenticator] .amplify-field-group__control {
+  border-radius: 12px;
+}
+
+[data-amplify-authenticator] .amplify-tabs {
+  border-color: #d8d0c0;
+}
+
+[data-amplify-authenticator] .amplify-tabs__item {
+  font-size: 0.8rem;
+}
+
+[data-amplify-authenticator] .amplify-tabs__item--active {
+  border-color: #2748ff;
+  color: #141518;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

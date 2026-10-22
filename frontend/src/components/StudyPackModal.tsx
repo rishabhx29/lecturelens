@@ -3,6 +3,7 @@ import { Dialog } from "@headlessui/react";
 import { format } from "date-fns";
 import {
   ArrowPathIcon,
+  ArrowUpRightIcon,
   BookOpenIcon,
   CheckCircleIcon,
   ChevronLeftIcon,
@@ -26,6 +27,8 @@ import {
   getStudyPack,
   getStudyPackErrorMessage,
 } from "../common/studyPackApi";
+import { LensMark } from "./Logo";
+import StatusBadge from "./StatusBadge";
 
 interface StudyPackModalProps {
   isOpen: boolean;
@@ -89,6 +92,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
   const studyPack: StudyPack | null =
     status === "READY" ? fullResponse?.studyPack ?? null : null;
   const isPending = status === "QUEUED" || status === "PROCESSING";
+  const showTabs = status === "READY" && Boolean(studyPack);
 
   // Clear the previous session once the dialog is closed so reopening it
   // never flashes stale content before the fresh fetch begins.
@@ -278,30 +282,30 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
   const flashcards = studyPack?.flashcards ?? [];
   const activeFlashcard = flashcards[flashcardIndex];
 
-  const renderLoadingPanel = (label: string) => (
-    <div className="flex flex-col items-center py-20 text-center">
-      <div className="relative flex h-16 w-16 items-center justify-center">
-        <div className="absolute inset-0 animate-ping rounded-full bg-violet-200 opacity-50" />
-        <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 text-violet-900">
-          <BookOpenIcon className="h-8 w-8" aria-hidden="true" />
-        </div>
+  const renderLoadingPanel = () => (
+    <div className="mx-auto max-w-2xl py-8 sm:py-14">
+      <p className="eyebrow">Preparing the desk</p>
+      <div className="mt-5 space-y-3">
+        <div className="skeleton h-10 w-4/5 rounded-xl" />
+        <div className="skeleton h-4 w-full rounded-full" />
+        <div className="skeleton h-4 w-11/12 rounded-full" />
+        <div className="skeleton h-4 w-3/4 rounded-full" />
       </div>
-      <p className="mt-6 text-base font-semibold text-gray-900">{label}</p>
-      <p className="mt-2 text-sm text-gray-500">
-        Just a moment while we fetch your study materials.
+      <p className="mt-8 text-sm text-ink-muted">
+        Loading your study materials…
       </p>
     </div>
   );
 
   const renderErrorPanel = () => (
-    <div className="mx-auto max-w-lg rounded-2xl border border-rose-200 bg-white p-6 text-center shadow-sm sm:p-8">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+    <div className="mx-auto max-w-lg py-10 text-center sm:py-16">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-coral/10 text-coral">
         <ExclamationTriangleIcon className="h-7 w-7" aria-hidden="true" />
       </div>
-      <h3 className="mt-5 text-lg font-semibold text-gray-900">
-        We couldn&apos;t load this Study Pack
+      <h3 className="mt-5 font-display text-3xl font-semibold tracking-[-0.05em] text-ink">
+        We couldn&apos;t load this pack.
       </h3>
-      <p className="mt-2 text-sm leading-6 text-gray-600">
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-ink-muted">
         {requestError ??
           "Something went wrong while talking to the Study Pack service."}
       </p>
@@ -309,10 +313,10 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
         type="button"
         onClick={refresh}
         disabled={refreshing}
-        className="mt-6 inline-flex items-center justify-center rounded-xl bg-violet-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        className="btn btn-primary mt-6"
       >
         <ArrowPathIcon
-          className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+          className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
           aria-hidden="true"
         />
         {refreshing ? "Retrying…" : "Try again"}
@@ -321,19 +325,16 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
   );
 
   const renderPendingPanel = () => (
-    <div className="flex flex-col items-center py-14 text-center sm:py-20">
+    <div className="mx-auto max-w-xl py-10 text-center sm:py-20">
       {pollTimedOut ? (
         <>
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 text-amber-600">
-            <ExclamationTriangleIcon
-              className="h-8 w-8"
-              aria-hidden="true"
-            />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber/10 text-amber">
+            <ExclamationTriangleIcon className="h-7 w-7" aria-hidden="true" />
           </div>
-          <h3 className="mt-6 text-lg font-semibold text-gray-900">
-            This is taking longer than expected
+          <h3 className="mt-5 font-display text-3xl font-semibold tracking-[-0.05em] text-ink">
+            This is taking a little longer.
           </h3>
-          <p className="mt-2 max-w-md text-sm leading-6 text-gray-600">
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-ink-muted">
             {requestError ??
               "Your Study Pack may still be generating. Check again in a moment, or close this window and come back later."}
           </p>
@@ -342,56 +343,44 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
               type="button"
               onClick={refresh}
               disabled={refreshing}
-              className="inline-flex items-center justify-center rounded-xl bg-violet-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn btn-primary"
             >
               <ArrowPathIcon
-                className={`mr-2 h-4 w-4 ${
-                  refreshing ? "animate-spin" : ""
-                }`}
+                className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
                 aria-hidden="true"
               />
               {refreshing ? "Checking…" : "Check again"}
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
-            >
+            <button type="button" onClick={onClose} className="btn btn-secondary">
               Close
             </button>
           </div>
         </>
       ) : (
         <>
-          <div className="relative flex h-16 w-16 items-center justify-center">
-            <div className="absolute inset-0 animate-ping rounded-full bg-violet-200 opacity-50" />
-            <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 text-violet-900">
-              <BookOpenIcon className="h-8 w-8" aria-hidden="true" />
+          <div className="relative mx-auto flex h-16 w-16 items-center justify-center">
+            <div className="absolute inset-0 animate-ping rounded-full bg-cobalt/10" />
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-cobalt/20 bg-cobalt-soft text-cobalt">
+              <BookOpenIcon className="h-7 w-7" aria-hidden="true" />
             </div>
           </div>
-          <h3 className="mt-6 text-lg font-semibold text-gray-900">
-            Building your Study Pack…
-          </h3>
-          <p className="mt-2 max-w-md text-sm leading-6 text-gray-600">
-            We&apos;re reading{" "}
-            <span className="font-medium text-gray-800">
-              {document.filename}
-            </span>{" "}
-            and putting together your summary, flashcards, and quiz. This can
-            take up to a minute.
+          <p className="mt-6 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-muted">
+            {status === "QUEUED" ? "Queued for generation" : "Reading the lecture"}
           </p>
-          <span className="mt-5 inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-800">
-            <ArrowPathIcon
-              className="mr-1.5 h-3.5 w-3.5 animate-spin"
-              aria-hidden="true"
-            />
-            {status === "QUEUED"
-              ? "Queued for generation"
-              : "Generating content"}
-          </span>
-          <p className="mt-6 max-w-sm text-xs leading-5 text-gray-400">
-            You can close this window and come back later — your Study Pack
-            will keep generating in the background.
+          <h3 className="mt-3 font-display text-3xl font-semibold tracking-[-0.05em] text-ink">
+            Building your Study Pack.
+          </h3>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-ink-muted">
+            We&apos;re reading{" "}
+            <span className="font-medium text-ink">{document.filename}</span>{" "}
+            and putting together the summary, key concepts, flashcards, and quiz.
+          </p>
+          <div className="mx-auto mt-7 h-1.5 max-w-xs overflow-hidden rounded-full bg-line-soft">
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-cobalt" />
+          </div>
+          <p className="mt-6 text-xs text-ink-muted">
+            You can close this window. The pack keeps generating in the
+            background.
           </p>
         </>
       )}
@@ -399,208 +388,219 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
   );
 
   const renderIntroPanel = () => (
-    <div className="mx-auto max-w-2xl">
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm sm:p-9">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-900 to-violet-700 text-white shadow-sm">
-          <SparklesIcon className="h-8 w-8" aria-hidden="true" />
-        </div>
-        <h3 className="mt-5 text-xl font-semibold text-gray-900 sm:text-2xl">
-          {status === "FAILED"
-            ? "Let's give your Study Pack another try"
-            : "Build a Study Pack from this lecture"}
-        </h3>
-        <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-gray-600">
-          LectureLens will read this lecture and create a concise summary, the
-          key concepts to remember, flashcards, and a practice quiz — all in one
-          place.
-        </p>
+    <div className="mx-auto max-w-3xl py-3 sm:py-8">
+      <p className="eyebrow">Study Pack / not generated</p>
+      <h2 className="mt-3 max-w-2xl font-display text-[clamp(2.4rem,5vw,4.2rem)] font-semibold leading-[0.9] tracking-[-0.07em] text-ink">
+        Turn this lecture into a study session.
+      </h2>
+      <p className="mt-5 max-w-xl text-sm leading-7 text-ink-muted">
+        LectureLens will read the pages and build a concise summary, the ideas
+        worth remembering, a set of flashcards, and a practice quiz.
+      </p>
 
-        <div className="mt-7 grid grid-cols-2 gap-3 text-left sm:grid-cols-4">
-          {[
-            { icon: DocumentTextIcon, label: "Summary" },
-            { icon: LightBulbIcon, label: "Key concepts" },
-            { icon: RectangleStackIcon, label: "Flashcards" },
-            { icon: QuestionMarkCircleIcon, label: "Practice quiz" },
-          ].map(({ icon: Icon, label }) => (
-            <div
-              key={label}
-              className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5"
-            >
-              <Icon
-                className="h-4 w-4 shrink-0 text-violet-700"
-                aria-hidden="true"
-              />
-              <span className="text-xs font-medium text-gray-700">
-                {label}
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        {[
+          { icon: DocumentTextIcon, number: "01", label: "Summary", copy: "A clear overview of the lecture." },
+          { icon: LightBulbIcon, number: "02", label: "Key concepts", copy: "The terms and ideas that matter." },
+          { icon: RectangleStackIcon, number: "03", label: "Flashcards", copy: "A quick way to test recall." },
+          { icon: QuestionMarkCircleIcon, number: "04", label: "Practice quiz", copy: "Check what actually stuck." },
+        ].map(({ icon: Icon, number, label, copy }) => (
+          <div
+            key={label}
+            className="rounded-2xl border border-line bg-paper-light p-4"
+          >
+            <div className="flex items-center justify-between">
+              <Icon className="h-4 w-4 text-cobalt" aria-hidden="true" />
+              <span className="font-mono text-[9px] tracking-[0.12em] text-ink-muted">
+                {number}
               </span>
             </div>
-          ))}
-        </div>
-
-        {status === "FAILED" && fullResponse?.error && (
-          <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-left text-sm leading-6 text-rose-800">
-            <span className="font-semibold">Previous attempt failed: </span>
-            {fullResponse.error}
+            <p className="mt-5 font-display text-xl font-semibold tracking-[-0.035em] text-ink">
+              {label}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-ink-muted">{copy}</p>
           </div>
-        )}
-
-        {requestError && (
-          <div
-            role="alert"
-            className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-left text-sm leading-6 text-rose-800"
-          >
-            {requestError}
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={actionLoading}
-          className="mt-7 inline-flex w-full items-center justify-center rounded-xl bg-violet-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        >
-          {actionLoading ? (
-            <>
-              <ArrowPathIcon
-                className="mr-2 h-4 w-4 animate-spin"
-                aria-hidden="true"
-              />
-              Starting…
-            </>
-          ) : (
-            <>
-              <SparklesIcon
-                className="mr-2 h-4 w-4"
-                aria-hidden="true"
-              />
-              Generate Study Pack
-            </>
-          )}
-        </button>
-        <p className="mt-3 text-xs text-gray-400">
-          Generation usually takes under a minute.
-        </p>
+        ))}
       </div>
+
+      {status === "FAILED" && fullResponse?.error && (
+        <div className="mt-6 rounded-xl border border-coral/25 bg-coral/10 p-4 text-sm leading-6 text-coral">
+          <span className="font-semibold">Previous attempt failed: </span>
+          {fullResponse.error}
+        </div>
+      )}
+
+      {requestError && (
+        <div
+          role="alert"
+          className="mt-6 rounded-xl border border-coral/25 bg-coral/10 p-4 text-sm leading-6 text-coral"
+        >
+          {requestError}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleGenerate}
+        disabled={actionLoading}
+        className="btn btn-primary mt-7"
+      >
+        {actionLoading ? (
+          <>
+            <ArrowPathIcon className="h-4 w-4 animate-spin" aria-hidden="true" />
+            Starting…
+          </>
+        ) : (
+          <>
+            <SparklesIcon className="h-4 w-4" aria-hidden="true" />
+            Generate Study Pack
+            <ArrowUpRightIcon className="h-4 w-4" aria-hidden="true" />
+          </>
+        )}
+      </button>
+      <p className="mt-3 text-xs text-ink-muted">
+        Generation usually takes under a minute. Built from this PDF only.
+      </p>
     </div>
   );
 
-  const renderTabs = () => {
-    if (!studyPack) return null;
-
-    return (
-      <>
-        <div
-          role="tablist"
-          aria-label="Study Pack sections"
-          className="mb-6 flex flex-wrap gap-1 border-b border-gray-200 pb-2"
-        >
-          {TABS.map((tab, index) => {
-            const Icon = TAB_ICONS[tab.key];
-            const selected = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                ref={(element) => {
-                  tabRefs.current[index] = element;
-                }}
-                type="button"
-                role="tab"
-                id={`study-pack-tab-${tab.key}`}
-                aria-selected={selected}
-                aria-controls={`study-pack-panel-${tab.key}`}
-                tabIndex={selected ? 0 : -1}
-                onClick={() => selectTab(tab.key)}
-                onKeyDown={(event) => handleTabKeyDown(event, index)}
-                className={`inline-flex shrink-0 items-center rounded-xl px-3.5 py-2.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 ${
-                  selected
-                    ? "bg-violet-900 text-white shadow-sm"
-                    : "text-gray-600 hover:bg-violet-50 hover:text-violet-900"
-                }`}
-              >
-                <Icon className="mr-2 h-4 w-4" aria-hidden="true" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {TABS.map((tab) => (
-          <div
+  const renderTabRail = () => (
+    <div
+      role="tablist"
+      aria-label="Study Pack sections"
+      className="grid grid-cols-2 gap-1.5 lg:flex lg:flex-col lg:gap-1"
+    >
+      {TABS.map((tab, index) => {
+        const Icon = TAB_ICONS[tab.key];
+        const selected = activeTab === tab.key;
+        return (
+          <button
             key={tab.key}
-            role="tabpanel"
-            id={`study-pack-panel-${tab.key}`}
-            aria-labelledby={`study-pack-tab-${tab.key}`}
-            hidden={activeTab !== tab.key}
-            tabIndex={0}
-            className="focus:outline-none"
+            ref={(element) => {
+              tabRefs.current[index] = element;
+            }}
+            type="button"
+            role="tab"
+            id={`study-pack-tab-${tab.key}`}
+            aria-selected={selected}
+            aria-controls={`study-pack-panel-${tab.key}`}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => selectTab(tab.key)}
+            onKeyDown={(event) => handleTabKeyDown(event, index)}
+            className={`flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt focus-visible:ring-offset-2 ${
+              selected
+                ? "bg-ink text-paper"
+                : "text-ink-soft hover:bg-paper-light hover:text-ink"
+            }`}
           >
-            {tab.key === "summary" && (
-            <div className="space-y-5">
-              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
-                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-violet-700">
-                  <SparklesIcon className="h-4 w-4" aria-hidden="true" />
-                  Study guide
-                </div>
-                <h3 className="mt-3 text-2xl font-semibold tracking-tight text-gray-900">
+            <span
+              className={`font-mono text-[9px] tracking-[0.1em] ${
+                selected ? "text-lime" : "text-ink-muted"
+              }`}
+            >
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <Icon className="h-4 w-4" aria-hidden="true" />
+            <span className="truncate">{tab.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const renderPanels = () => (
+    <>
+      {TABS.map((tab) => (
+        <div
+          key={tab.key}
+          role="tabpanel"
+          id={`study-pack-panel-${tab.key}`}
+          aria-labelledby={`study-pack-tab-${tab.key}`}
+          hidden={activeTab !== tab.key}
+          tabIndex={0}
+          className="focus:outline-none"
+        >
+          {tab.key === "summary" && studyPack && (
+            <div className="space-y-7">
+              <div>
+                <p className="eyebrow">01 / Summary</p>
+                <h2 className="mt-3 max-w-2xl font-display text-[clamp(2rem,3.8vw,3.35rem)] font-semibold leading-[0.94] tracking-[-0.065em] text-ink">
                   {studyPack.title}
-                </h3>
+                </h2>
                 {generatedAt && (
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.13em] text-ink-muted">
                     Generated {generatedAt}
                   </p>
                 )}
-                <div className="mt-5 whitespace-pre-line text-[15px] leading-7 text-gray-700">
+                <p className="mt-6 whitespace-pre-line text-[16px] leading-8 text-ink-soft">
                   {studyPack.summary || "No summary was generated."}
-                </div>
+                </p>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-3 divide-x overflow-hidden rounded-2xl border border-line bg-paper-light">
                 {[
-                  {
-                    label: `${studyPack.keyConcepts.length} key concepts`,
-                  },
-                  {
-                    label: `${studyPack.flashcards.length} flashcards`,
-                  },
-                  { label: `${studyPack.quiz.length} quiz questions` },
-                ].map((item) => (
-                  <span
-                    key={item.label}
-                    className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600"
-                  >
-                    {item.label}
-                  </span>
+                  [studyPack.keyConcepts.length, "Key concepts"],
+                  [studyPack.flashcards.length, "Flashcards"],
+                  [studyPack.quiz.length, "Quiz questions"],
+                ].map(([value, label]) => (
+                  <div key={label} className="p-4">
+                    <p className="font-display text-2xl font-semibold tracking-[-0.04em] text-ink">
+                      {value}
+                    </p>
+                    <p className="mt-0.5 text-[10px] uppercase tracking-[0.1em] text-ink-muted">
+                      {label}
+                    </p>
+                  </div>
                 ))}
+              </div>
+
+              <div className="rounded-2xl bg-ink p-5 text-paper">
+                <p className="eyebrow-light">A good way to use this</p>
+                <p className="mt-3 text-sm leading-6 text-paper/70">
+                  Read the summary once, close it, and explain the lecture out
+                  loud. Then use the flashcards and quiz to find the gaps.
+                </p>
               </div>
             </div>
           )}
 
-          {tab.key === "concepts" && (
+          {tab.key === "concepts" && studyPack && (
             <div>
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="eyebrow">02 / Key concepts</p>
+                  <h2 className="mt-3 font-display text-[clamp(2rem,3.6vw,3rem)] font-semibold leading-[0.95] tracking-[-0.06em] text-ink">
+                    The ideas worth keeping.
+                  </h2>
+                </div>
+                <span className="hidden pb-1 font-mono text-[9px] uppercase tracking-[0.13em] text-ink-muted sm:block">
+                  {studyPack.keyConcepts.length} ideas
+                </span>
+              </div>
+
               {studyPack.keyConcepts.length === 0 ? (
-                <p className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
+                <p className="mt-6 rounded-2xl border border-line bg-paper-light p-6 text-sm text-ink-muted">
                   No key concepts were generated for this lecture.
                 </p>
               ) : (
-                <ol className="grid gap-4 sm:grid-cols-2">
+                <ol className="mt-6 grid gap-3 sm:grid-cols-2">
                   {studyPack.keyConcepts.map((concept, index) => (
                     <li
                       key={`${concept.term}-${index}`}
-                      className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+                      className="rounded-2xl border border-line bg-paper-light p-5 transition duration-200 hover:border-cobalt/30"
                     >
-                      <div className="flex items-start gap-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-900 text-sm font-semibold text-white">
-                          {index + 1}
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-ink-muted">
+                          Concept {String(index + 1).padStart(2, "0")}
                         </span>
-                        <div className="min-w-0">
-                          <h4 className="font-semibold text-gray-900">
-                            {concept.term}
-                          </h4>
-                          <p className="mt-1.5 text-sm leading-6 text-gray-600">
-                            {concept.definition}
-                          </p>
-                        </div>
+                        <span className="h-1.5 w-1.5 rounded-full bg-cobalt" />
                       </div>
+                      <h3 className="mt-6 font-display text-2xl font-semibold leading-[1] tracking-[-0.045em] text-ink">
+                        {concept.term}
+                      </h3>
+                      <p className="mt-3 text-sm leading-6 text-ink-muted">
+                        {concept.definition}
+                      </p>
                     </li>
                   ))}
                 </ol>
@@ -608,51 +608,68 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
             </div>
           )}
 
-          {tab.key === "flashcards" && (
+          {tab.key === "flashcards" && studyPack && (
             <div className="mx-auto max-w-2xl">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="eyebrow">03 / Flashcards</p>
+                  <h2 className="mt-3 font-display text-[clamp(2rem,3.6vw,3rem)] font-semibold leading-[0.95] tracking-[-0.06em] text-ink">
+                    Test the recall.
+                  </h2>
+                </div>
+                <p className="pb-1 font-mono text-[10px] tabular-nums tracking-[0.12em] text-ink-muted">
+                  {flashcards.length === 0
+                    ? "00 / 00"
+                    : `${String(flashcardIndex + 1).padStart(2, "0")} / ${String(
+                        flashcards.length
+                      ).padStart(2, "0")}`}
+                </p>
+              </div>
+
               {flashcards.length === 0 || !activeFlashcard ? (
-                <p className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
+                <p className="mt-6 rounded-2xl border border-line bg-paper-light p-6 text-sm text-ink-muted">
                   No flashcards were generated for this lecture.
                 </p>
               ) : (
                 <>
-                  <div className="flex items-center justify-between text-sm">
-                    <p className="font-semibold text-gray-800">Flashcards</p>
-                    <p className="tabular-nums text-gray-500">
-                      {flashcardIndex + 1} / {flashcards.length}
-                    </p>
-                  </div>
-
                   <button
                     type="button"
                     onClick={() => setIsFlipped((flipped) => !flipped)}
                     aria-pressed={isFlipped}
-                    className={`mt-3 flex min-h-[260px] w-full flex-col items-center justify-center rounded-2xl border p-6 text-center shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 sm:min-h-[300px] sm:p-10 ${
+                    className={`relative mt-5 flex min-h-[330px] w-full flex-col justify-between overflow-hidden rounded-[28px] border p-6 text-left transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt focus-visible:ring-offset-4 sm:p-8 ${
                       isFlipped
-                        ? "border-violet-200 bg-violet-50"
-                        : "border-gray-200 bg-white hover:border-violet-300 hover:bg-violet-50/40"
+                        ? "border-cobalt bg-cobalt text-white"
+                        : "border-ink bg-ink text-paper"
                     }`}
                   >
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-700">
-                      {isFlipped ? "Answer" : "Term"}
-                    </span>
-                    <span className="mt-4 max-w-xl text-lg font-medium leading-7 text-gray-900 sm:text-xl">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="font-mono text-[9px] uppercase tracking-[0.16em] opacity-60">
+                        {isFlipped ? "Answer" : "Question"}
+                      </span>
+                      <span className="font-mono text-[9px] uppercase tracking-[0.13em] opacity-60">
+                        Card {String(flashcardIndex + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+
+                    <p className="my-8 max-w-[34rem] font-display text-[clamp(1.8rem,3.8vw,2.8rem)] font-semibold leading-[1.02] tracking-[-0.055em]">
                       {isFlipped ? activeFlashcard.back : activeFlashcard.front}
-                    </span>
-                    <span className="mt-7 inline-flex items-center text-xs font-medium text-gray-500">
-                      <ArrowPathIcon
-                        className="mr-1.5 h-3.5 w-3.5"
-                        aria-hidden="true"
-                      />
-                      {isFlipped
-                        ? "Click to show the term"
-                        : "Click to reveal the answer"}
-                    </span>
+                    </p>
+
+                    <div className="flex items-center justify-between gap-4 font-mono text-[9px] uppercase tracking-[0.13em] opacity-65">
+                      <span>
+                        {isFlipped ? "Tap for the question" : "Tap to reveal the answer"}
+                      </span>
+                      <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />
+                    </div>
+                    <span
+                      className="absolute -bottom-20 -right-10 h-52 w-52 rounded-full border border-white/10"
+                      aria-hidden="true"
+                    />
                   </button>
 
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-gray-200">
+                  <div className="mt-5 h-1 overflow-hidden rounded-full bg-line">
                     <div
-                      className="h-full rounded-full bg-violet-900 transition-all duration-300"
+                      className="h-full rounded-full bg-cobalt transition-all duration-300"
                       style={{
                         width: `${
                           ((flashcardIndex + 1) / flashcards.length) * 100
@@ -666,25 +683,19 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
                       type="button"
                       onClick={() => showFlashcard(flashcardIndex - 1)}
                       disabled={flashcardIndex === 0}
-                      className="inline-flex items-center rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
+                      className="btn btn-secondary"
                     >
-                      <ChevronLeftIcon
-                        className="mr-1 h-4 w-4"
-                        aria-hidden="true"
-                      />
+                      <ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
                       Previous
                     </button>
                     <button
                       type="button"
                       onClick={() => showFlashcard(flashcardIndex + 1)}
                       disabled={flashcardIndex >= flashcards.length - 1}
-                      className="inline-flex items-center rounded-xl bg-violet-900 px-3.5 py-2.5 text-sm font-medium text-white transition hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 sm:px-4"
+                      className="btn btn-primary"
                     >
                       Next
-                      <ChevronRightIcon
-                        className="ml-1 h-4 w-4"
-                        aria-hidden="true"
-                      />
+                      <ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </div>
                 </>
@@ -692,58 +703,53 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
             </div>
           )}
 
-          {tab.key === "quiz" && (
-            <div className="mx-auto max-w-3xl">
+          {tab.key === "quiz" && studyPack && (
+            <div>
+              <div className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="eyebrow">04 / Practice quiz</p>
+                  <h2 className="mt-3 font-display text-[clamp(2rem,3.6vw,3rem)] font-semibold leading-[0.95] tracking-[-0.06em] text-ink">
+                    Check what stuck.
+                  </h2>
+                  <p className="mt-2 text-sm text-ink-muted">
+                    {quizChecked
+                      ? "Read the explanations, then try again whenever you like."
+                      : "Answer every question, then check your answers."}
+                  </p>
+                </div>
+                {quizChecked ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuizAnswers({});
+                      setQuizChecked(false);
+                    }}
+                    className="btn btn-secondary shrink-0"
+                  >
+                    <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />
+                    Try again
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setQuizChecked(true)}
+                    disabled={!allAnswered}
+                    className="btn btn-primary shrink-0"
+                  >
+                    <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
+                    Check answers
+                  </button>
+                )}
+              </div>
+
               {quiz.length === 0 ? (
-                <p className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
+                <p className="mt-6 rounded-2xl border border-line bg-paper-light p-6 text-sm text-ink-muted">
                   No quiz questions were generated for this lecture.
                 </p>
               ) : (
-                <div className="space-y-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Practice quiz
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        {quizChecked
-                          ? "Review the explanations below, then try again whenever you like."
-                          : "Answer every question, then check your answers."}
-                      </p>
-                    </div>
-                    {quizChecked ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setQuizAnswers({});
-                          setQuizChecked(false);
-                        }}
-                        className="inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
-                      >
-                        <ArrowPathIcon
-                          className="mr-2 h-4 w-4"
-                          aria-hidden="true"
-                        />
-                        Try again
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setQuizChecked(true)}
-                        disabled={!allAnswered}
-                        className="inline-flex items-center rounded-xl bg-violet-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300"
-                      >
-                        <CheckCircleIcon
-                          className="mr-2 h-4 w-4"
-                          aria-hidden="true"
-                        />
-                        Check answers
-                      </button>
-                    )}
-                  </div>
-
+                <>
                   {!quizChecked && (
-                    <p className="text-xs font-medium text-gray-500">
+                    <p className="mt-5 font-mono text-[9px] uppercase tracking-[0.13em] text-ink-muted">
                       {answeredCount} of {quiz.length} answered
                     </p>
                   )}
@@ -751,15 +757,15 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
                   {quizChecked && (
                     <div
                       role="status"
-                      className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 sm:p-5"
+                      className="mt-5 rounded-2xl bg-lime p-5 text-ink"
                     >
-                      <p className="text-sm font-semibold text-emerald-900">
-                        You scored {quizScore} out of {quiz.length}
-                        <span className="ml-2 font-normal text-emerald-700">
+                      <p className="font-display text-2xl font-semibold tracking-[-0.04em]">
+                        {quizScore} / {quiz.length} correct
+                        <span className="ml-2 font-sans text-sm font-normal text-ink/60">
                           ({Math.round((quizScore / quiz.length) * 100)}%)
                         </span>
                       </p>
-                      <p className="mt-1 text-xs leading-5 text-emerald-700">
+                      <p className="mt-1 text-sm leading-6 text-ink/70">
                         {quizScore === quiz.length
                           ? "Perfect score — this lecture is in good shape."
                           : "Read through the explanations and give it another go."}
@@ -767,137 +773,136 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
                     </div>
                   )}
 
-                  {quiz.map((question, questionIndex) => {
-                    const selectedAnswer = quizAnswers[questionIndex];
+                  <div className="mt-5 space-y-4">
+                    {quiz.map((question, questionIndex) => {
+                      const selectedAnswer = quizAnswers[questionIndex];
 
-                    return (
-                      <div
-                        key={`${question.question}-${questionIndex}`}
-                        className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-semibold text-violet-900">
-                            {questionIndex + 1}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-gray-900">
-                              {question.question}
-                            </p>
+                      return (
+                        <div
+                          key={`${question.question}-${questionIndex}`}
+                          className="rounded-2xl border border-line bg-paper-light p-5"
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="flex h-7 w-8 shrink-0 items-center justify-center rounded-lg bg-ink font-mono text-[9px] tracking-[0.08em] text-paper">
+                              {String(questionIndex + 1).padStart(2, "0")}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium leading-6 text-ink">
+                                {question.question}
+                              </p>
 
-                            <div className="mt-4 space-y-2">
-                              {question.options.map((option, optionIndex) => {
-                                const selected =
-                                  selectedAnswer === optionIndex;
-                                const isCorrectOption =
-                                  question.answerIndex === optionIndex;
+                              <div className="mt-4 space-y-2">
+                                {question.options.map((option, optionIndex) => {
+                                  const selected =
+                                    selectedAnswer === optionIndex;
+                                  const isCorrectOption =
+                                    question.answerIndex === optionIndex;
 
-                                let optionClasses =
-                                  "border-gray-200 bg-white text-gray-800 hover:border-violet-300 hover:bg-violet-50";
-                                if (quizChecked) {
-                                  if (isCorrectOption) {
-                                    optionClasses =
-                                      "border-emerald-300 bg-emerald-50 text-emerald-900";
+                                  let optionClasses =
+                                    "border-line bg-paper text-ink-soft hover:border-cobalt/30 hover:bg-cobalt-soft/50";
+                                  if (quizChecked) {
+                                    if (isCorrectOption) {
+                                      optionClasses =
+                                        "border-moss/30 bg-moss/10 text-moss";
+                                    } else if (selected) {
+                                      optionClasses =
+                                        "border-coral/30 bg-coral/10 text-coral";
+                                    } else {
+                                      optionClasses =
+                                        "border-line bg-paper text-ink-muted";
+                                    }
                                   } else if (selected) {
                                     optionClasses =
-                                      "border-rose-300 bg-rose-50 text-rose-900";
-                                  } else {
-                                    optionClasses =
-                                      "border-gray-200 bg-white text-gray-500";
+                                      "border-cobalt bg-cobalt-soft text-cobalt";
                                   }
-                                } else if (selected) {
-                                  optionClasses =
-                                    "border-violet-500 bg-violet-50 text-violet-900 ring-1 ring-violet-500";
-                                }
 
-                                return (
-                                  <button
-                                    key={`${option}-${optionIndex}`}
-                                    type="button"
-                                    onClick={() =>
-                                      setQuizAnswers((answers) => ({
-                                        ...answers,
-                                        [questionIndex]: optionIndex,
-                                      }))
-                                    }
-                                    disabled={quizChecked}
-                                    aria-pressed={selected}
-                                    className={`flex w-full items-center rounded-xl border px-3.5 py-3 text-left text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 disabled:cursor-default ${optionClasses}`}
-                                  >
-                                    <span
-                                      className={`mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
-                                        quizChecked && isCorrectOption
-                                          ? "border-emerald-400 bg-emerald-100 text-emerald-800"
-                                          : quizChecked &&
-                                            selected &&
-                                            !isCorrectOption
-                                          ? "border-rose-400 bg-rose-100 text-rose-800"
-                                          : selected
-                                          ? "border-violet-400 bg-violet-100 text-violet-800"
-                                          : "border-gray-300 text-gray-500"
-                                      }`}
+                                  return (
+                                    <button
+                                      key={`${option}-${optionIndex}`}
+                                      type="button"
+                                      onClick={() =>
+                                        setQuizAnswers((answers) => ({
+                                          ...answers,
+                                          [questionIndex]: optionIndex,
+                                        }))
+                                      }
+                                      disabled={quizChecked}
+                                      aria-pressed={selected}
+                                      className={`flex w-full items-center rounded-xl border px-3.5 py-3 text-left text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt focus-visible:ring-offset-2 disabled:cursor-default ${optionClasses}`}
                                     >
-                                      {String.fromCharCode(65 + optionIndex)}
-                                    </span>
-                                    <span className="flex-1">{option}</span>
-                                    {quizChecked && isCorrectOption && (
-                                      <CheckCircleIcon
-                                        className="ml-2 h-5 w-5 shrink-0 text-emerald-600"
-                                        aria-label="Correct answer"
-                                      />
-                                    )}
-                                    {quizChecked &&
-                                      selected &&
-                                      !isCorrectOption && (
-                                        <XCircleIcon
-                                          className="ml-2 h-5 w-5 shrink-0 text-rose-500"
-                                          aria-label="Your answer"
+                                      <span
+                                        className={`mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-mono text-[10px] ${
+                                          quizChecked && isCorrectOption
+                                            ? "border-moss/30 bg-moss/10 text-moss"
+                                            : quizChecked &&
+                                                selected &&
+                                                !isCorrectOption
+                                              ? "border-coral/30 bg-coral/10 text-coral"
+                                              : selected
+                                                ? "border-cobalt/30 bg-cobalt-soft text-cobalt"
+                                                : "border-line text-ink-muted"
+                                        }`}
+                                      >
+                                        {String.fromCharCode(65 + optionIndex)}
+                                      </span>
+                                      <span className="flex-1">{option}</span>
+                                      {quizChecked && isCorrectOption && (
+                                        <CheckCircleIcon
+                                          className="ml-2 h-4 w-4 shrink-0 text-moss"
+                                          aria-label="Correct answer"
                                         />
                                       )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-
-                            {quizChecked && question.explanation && (
-                              <div className="mt-4 rounded-lg bg-gray-50 p-3 text-sm leading-6 text-gray-700">
-                                <span className="font-semibold text-gray-900">
-                                  Why:{" "}
-                                </span>
-                                {question.explanation}
+                                      {quizChecked &&
+                                        selected &&
+                                        !isCorrectOption && (
+                                          <XCircleIcon
+                                            className="ml-2 h-4 w-4 shrink-0 text-coral"
+                                            aria-label="Your answer"
+                                          />
+                                        )}
+                                    </button>
+                                  );
+                                })}
                               </div>
-                            )}
+
+                              {quizChecked && question.explanation && (
+                                <div className="mt-4 rounded-xl bg-paper p-3 text-sm leading-6 text-ink-soft">
+                                  <span className="font-semibold text-ink">
+                                    Why:{" "}
+                                  </span>
+                                  {question.explanation}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           )}
-          </div>
-        ))}
-      </>
-    );
-  };
+        </div>
+      ))}
+    </>
+  );
 
   const renderReadyContent = () => {
     if (!studyPack) {
       return (
-        <div className="mx-auto max-w-lg rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
-          <p className="text-sm font-medium text-amber-900">
+        <div className="mx-auto max-w-lg rounded-2xl border border-amber/25 bg-amber/10 p-6 text-center">
+          <p className="text-sm font-medium text-amber">
             This Study Pack is marked ready, but no content was returned.
           </p>
           <button
             type="button"
             onClick={refresh}
             disabled={refreshing}
-            className="mt-4 inline-flex items-center rounded-xl bg-violet-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 disabled:opacity-60"
+            className="btn btn-primary mt-4"
           >
             <ArrowPathIcon
-              className={`mr-2 h-4 w-4 ${
-                refreshing ? "animate-spin" : ""
-              }`}
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
               aria-hidden="true"
             />
             Refresh
@@ -905,116 +910,150 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({
         </div>
       );
     }
-    return renderTabs();
+    return renderPanels();
   };
 
   const renderBody = () => {
-    if (initialLoading) {
-      return renderLoadingPanel("Loading your Study Pack…");
-    }
-
-    if (!fullResponse) {
-      return renderErrorPanel();
-    }
-
-    if (isPending) {
-      return renderPendingPanel();
-    }
-
-    if (status === "READY") {
-      return (
-        <>
-          {requestError && (
-            <div
-              role="alert"
-              className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-            >
-              <span>{requestError}</span>
-              <button
-                type="button"
-                onClick={refresh}
-                disabled={refreshing}
-                className="inline-flex items-center rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 disabled:opacity-60"
-              >
-                <ArrowPathIcon
-                  className={`mr-1.5 h-3.5 w-3.5 ${
-                    refreshing ? "animate-spin" : ""
-                  }`}
-                  aria-hidden="true"
-                />
-                Retry
-              </button>
-            </div>
-          )}
-          {renderReadyContent()}
-        </>
-      );
-    }
-
+    if (initialLoading) return renderLoadingPanel();
+    if (!fullResponse) return renderErrorPanel();
+    if (isPending) return renderPendingPanel();
+    if (status === "READY") return renderReadyContent();
     if (status === "FAILED" || status === "NOT_GENERATED") {
       return renderIntroPanel();
     }
-
     return renderErrorPanel();
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={onClose}
-      className="relative z-50"
-    >
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
       <div
-        className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
+        className="fixed inset-0 animate-fade-in bg-ink/60 backdrop-blur-[2px]"
         aria-hidden="true"
       />
 
       <div className="fixed inset-0 overflow-y-auto">
-        <div className="flex min-h-full items-stretch justify-center sm:items-center sm:p-6">
-          <Dialog.Panel className="relative flex min-h-screen w-full flex-col overflow-hidden bg-gray-50 shadow-2xl sm:h-[92vh] sm:max-h-[860px] sm:min-h-0 sm:max-w-4xl sm:rounded-2xl sm:border sm:border-gray-200">
-            <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-violet-950 via-violet-900 to-violet-800 px-5 py-5 text-white sm:px-7 sm:py-6">
-              <div
-                className="pointer-events-none absolute -right-8 -top-12 h-40 w-40 rounded-full border border-white/10 bg-white/5"
-                aria-hidden="true"
-              />
-              <div
-                className="pointer-events-none absolute -bottom-16 right-16 h-32 w-32 rounded-full bg-violet-500/20 blur-2xl"
-                aria-hidden="true"
-              />
-              <div className="relative flex items-start justify-between gap-4">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10 sm:flex">
-                    <BookOpenIcon
-                      className="h-6 w-6"
+        <div className="flex min-h-full items-stretch justify-center sm:items-center sm:p-4">
+          <Dialog.Panel className="relative flex min-h-screen w-full animate-scale-in flex-col overflow-hidden border-line bg-paper shadow-2xl sm:h-[90vh] sm:max-h-[900px] sm:min-h-0 sm:max-w-[1120px] sm:rounded-[30px] sm:border">
+            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-line bg-paper-light px-5 py-4 sm:px-7">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ink text-paper">
+                  <LensMark className="h-[19px] w-[19px]" />
+                </span>
+                <div className="min-w-0">
+                  <p className="eyebrow">LectureLens</p>
+                  <Dialog.Title className="truncate font-display text-lg font-semibold leading-tight tracking-[-0.04em] text-ink">
+                    Study Pack
+                    <span className="ml-2 hidden font-sans text-xs font-normal text-ink-muted sm:inline">
+                      {document.filename}
+                    </span>
+                  </Dialog.Title>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2">
+                {status && <StatusBadge status={status} kind="study" />}
+                {showTabs && (
+                  <button
+                    type="button"
+                    onClick={refresh}
+                    disabled={refreshing}
+                    aria-label="Refresh Study Pack"
+                    className="icon-button h-9 w-9 border-transparent bg-transparent"
+                  >
+                    <ArrowPathIcon
+                      className={`h-4 w-4 ${
+                        refreshing ? "animate-spin" : ""
+                      }`}
                       aria-hidden="true"
                     />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-200">
-                      LectureLens
-                    </p>
-                    <Dialog.Title className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
-                      Study Pack
-                    </Dialog.Title>
-                    <p className="mt-1 truncate text-sm text-violet-200">
-                      {document.filename}
-                    </p>
-                  </div>
-                </div>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={onClose}
                   aria-label="Close Study Pack"
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-violet-100 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                  className="icon-button h-9 w-9 border-line bg-transparent"
                 >
-                  <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+                  <XMarkIcon className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className="p-5 sm:p-7">{renderBody()}</div>
-            </div>
+            {showTabs ? (
+              <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+                <aside className="shrink-0 border-b border-line bg-paper-deep/50 p-4 sm:p-5 lg:w-[270px] lg:border-b-0 lg:border-r">
+                  <div className="hidden lg:block">
+                    <p className="eyebrow">Generated pack</p>
+                    <h2 className="mt-2 font-display text-[1.55rem] font-semibold leading-[0.98] tracking-[-0.05em] text-ink">
+                      {studyPack?.title}
+                    </h2>
+                    {generatedAt && (
+                      <p className="mt-2 font-mono text-[9px] uppercase leading-5 tracking-[0.11em] text-ink-muted">
+                        {generatedAt}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="lg:mt-6">{renderTabRail()}</div>
+
+                  <div className="mt-5 hidden border-t border-line pt-4 lg:block">
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        [studyPack?.keyConcepts.length ?? 0, "Ideas"],
+                        [studyPack?.flashcards.length ?? 0, "Cards"],
+                        [studyPack?.quiz.length ?? 0, "Qs"],
+                      ].map(([value, label]) => (
+                        <div key={label}>
+                          <p className="font-display text-xl font-semibold tracking-[-0.04em] text-ink">
+                            {value}
+                          </p>
+                          <p className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.1em] text-ink-muted">
+                            {label}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-4 text-[10px] leading-5 text-ink-muted">
+                      Grounded in {document.pages} pages of this lecture.
+                    </p>
+                  </div>
+                </aside>
+
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <div className="mx-auto max-w-3xl p-5 sm:p-7">
+                    {requestError && (
+                      <div
+                        role="alert"
+                        className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber/25 bg-amber/10 px-4 py-3 text-sm text-amber"
+                      >
+                        <span>{requestError}</span>
+                        <button
+                          type="button"
+                          onClick={refresh}
+                          disabled={refreshing}
+                          className="inline-flex items-center rounded-lg border border-amber/25 bg-paper-light px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-amber transition hover:bg-amber/10 disabled:opacity-60"
+                        >
+                          <ArrowPathIcon
+                            className={`mr-1.5 h-3.5 w-3.5 ${
+                              refreshing ? "animate-spin" : ""
+                            }`}
+                            aria-hidden="true"
+                          />
+                          Retry
+                        </button>
+                      </div>
+                    )}
+                    {renderReadyContent()}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <div className="mx-auto max-w-3xl p-5 sm:p-7">
+                  {renderBody()}
+                </div>
+              </div>
+            )}
           </Dialog.Panel>
         </div>
       </div>
